@@ -1,7 +1,7 @@
 import csv
 import glob
 
-def importResult(file):
+def importResults(file):
     file = file
     with open(file, newline='') as f:
         next(f)
@@ -22,7 +22,7 @@ def sortStages(files, round):
     wrcPlayers = []
 
     for idx, file in enumerate(files):
-        stageFile = importResult(file)
+        stageFile = importResults(file)
         if idx == len(files) -1:
             stages[round] = stageFile
         else:
