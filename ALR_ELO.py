@@ -103,10 +103,10 @@ def main():
         if not Path(path).is_dir():
             if not challengeYesOrNo(f"No directory for {club}/{round} exists. Try again?"):
                 quit("No results have been exported")
+        elif Path(f"Output/{club}/{round}.csv").is_file():
+            if not challengeYesOrNo(f"An output for {club} {round} already exists. Overwrite?"):
+                quit("No results have been exported")
         else:
-            if Path(f"Output/{club}/{round}.csv").is_file():
-                if not challengeYesOrNo(f"An output for {club} {round} already exists. Overwrite?"):
-                    quit("No results have been exported")
             break
     
     files = sorted(glob.glob(path + "/" + "*stage*"), key=len)
