@@ -118,9 +118,7 @@ def main():
         overallp = r"^(S\d? R\d?\\)?wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
         stagenum = 0
         overallnum = 0
-        #print(files)
         for f in files:
-            print(f)
             if re.match(stagep, f.split("/")[-1]):
                 stagenum += 1
             elif re.match(overallp, f.split("/")[-1]):
