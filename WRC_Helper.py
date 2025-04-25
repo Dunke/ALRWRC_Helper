@@ -27,7 +27,7 @@ class Round:
         self.stages = []
         self.results = {}
     
-    def import_results(self, files, roundnum):
+    def import_results(self, files):
 
         wrcplayers = []
 
@@ -60,12 +60,12 @@ class Round:
                     self.drivers.append(driver)
 
             if idx == len(files) -1:
-                self.stages.append(Stage(roundnum, stage_file))
+                self.stages.append(Stage(self.number, stage_file))
             else:
-                self.stages.append(Stage(f"{roundnum} S{str(idx + 1)}", stage_file))
+                self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", stage_file))
         
     def export_results(self, files):
-        self.import_results(files, self.number)
+        self.import_results(files)
         self.find_dnfs()
         file = "Output/" + f"{self.club}/{self.number}" + ".csv"
 
