@@ -111,19 +111,21 @@ def main():
         else:
             break
     
-    files = sorted(glob.glob(path + "/" + "*stage*"), key=len)
-    
+    files = glob.glob(path + "/" + "*.csv")
+    files = sorted(files, key= lambda x: re.split(r"/|\\", x)[-1])
+    files = sorted(files, key=len)
+
     if not files:
         quit("No files were found")
     else:
-        stagep = r"^(S\d? R\d?\\)?wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
-        overallp = r"^(S\d? R\d?\\)?wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
+        stagep = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
+        overallp = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
         stagenum = 0
         overallnum = 0
         for f in files:
-            if re.match(stagep, f.split("/")[-1]):
+            if re.match(stagep, f):
                 stagenum += 1
-            elif re.match(overallp, f.split("/")[-1]):
+            elif re.match(overallp, f):
                 overallnum += 1
         print("Found the following number of stages")
         print(f"Stage files: {stagenum}")
