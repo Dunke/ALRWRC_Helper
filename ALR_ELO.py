@@ -106,6 +106,8 @@ def main():
         elif Path(f"Output/{club}/{round}.csv").is_file():
             if not challengeYesOrNo(f"An output for {club} {round} already exists. Overwrite?"):
                 quit("No results have been exported")
+            else:
+                break
         else:
             break
     
