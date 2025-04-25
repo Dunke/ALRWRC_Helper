@@ -167,7 +167,6 @@ def main():
         stagenum = 0
         overallnum = 0
         for f in files:
-            print(f)
             if re.match(stagep, f):
                 stagenum += 1
             elif re.match(overallp, f):
