@@ -59,41 +59,36 @@ class Round:
                 if not driver in self.drivers:
                     self.drivers.append(driver)
 
-            #print(file)
             if idx == len(files) -1:
                 self.stages.append(Stage(roundnum, stage_file))
             else:
                 self.stages.append(Stage(f"{roundnum} S{str(idx + 1)}", stage_file))
         
     def export_results(self, files):
-        stageData = self.find_dnfs(files, self.number)
+        self.import_results(files, self.number)
+        self.find_dnfs()
         file = "Output/" + f"{self.club}/{self.number}" + ".csv"
 
-        # with open(file, "w", newline="") as csvfile:
-        #     writer = csv.writer(csvfile)
-        #     for stage in stageData:
-        #         writer.writerow([stage])
-        #         for row in stageData[stage]:
-        #             writer.writerow(["", row["Position"], row["Display Name"]])
+        with open(file, "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            for stage in self.results:
+                writer.writerow([stage])
+                for row in self.results[stage]:
+                    if self.club == "WREC":
+                        writer.writerow(["", row[0], row[1], row[2]])
+                    else:
+                        writer.writerow(["", row[0], row[1]])
 
-    def find_dnfs(self, files, roundnum):
-
-        self.import_results(files, roundnum)                
+    def find_dnfs(self):                
 
         previous_stage_drivers = []
-
-        print(len(self.drivers))
 
         for stage in self.stages:
 
             nominal_times = ["00:08:00", "00:16:00", "00:25:00", "00:35:00"]
-            #winner_time = "00:00:00"
             current_stage_drivers = []
 
             for idx, row in enumerate(stage.results):
-
-                #if idx == 0:
-                #    winner_time = row[3]
 
                 if row[3] in nominal_times:
                     row[0] = "DNF"
@@ -108,8 +103,10 @@ class Round:
                         for d in self.drivers:
                             if d.name == name:
                                 driver = d
-                        
-                        stage.results.append(['DNF', driver.name, driver.car, '01:00:00', '01:00:00', '00:00:00.0000000', driver.platform, driver.club])
+                        if len(stage.number) == 5:
+                            stage.results.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club])
+                        else:
+                            stage.results.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', '10:00:00', driver.platform, driver.club])
                         tmp_drivers.append(name)
                 
                 current_stage_drivers = current_stage_drivers + tmp_drivers
@@ -117,11 +114,6 @@ class Round:
             previous_stage_drivers = current_stage_drivers
 
             self.results[stage.number] = stage.results
-        for result in self.results:
-            print(result)
-            for row in self.results[result]:
-                print(row)
-        # return self.results
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
@@ -165,18 +157,20 @@ def main():
     
     files = glob.glob(path + "/" + "*.csv")
     files = sorted(files, key= lambda x: re.split(r"/|\\", x)[-1])
+    files = sorted(files, key=len)
 
     if not files:
         quit("No files were found")
     else:
-        stagep = r"^^((WRC[12]|WREC)\/S\d? R\d?[\\\/])?wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
-        overallp = r"^^((WRC[12]|WREC)\/S\d? R\d?[\\\/])?wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
+        stagep = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
+        overallp = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
         stagenum = 0
         overallnum = 0
         for f in files:
-            if re.match(stagep, f.split("/")[-1]):
+            print(f)
+            if re.match(stagep, f):
                 stagenum += 1
-            elif re.match(overallp, f.split("/")[-1]):
+            elif re.match(overallp, f):
                 overallnum += 1
         print("Found the following number of stages")
         print(f"Stage files: {stagenum}")
