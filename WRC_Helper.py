@@ -92,11 +92,6 @@ class Round:
             for row in self.overall.result:
                 self.wrc_writerow(writer, row)
 
-    # def find_driver_index(self, name):
-    #     for i, d in enumerate(self.drivers):
-    #         if d.name == name:
-    #             return i
-
     def find_dnfs(self):                
 
         previous_stage_drivers = []
@@ -107,10 +102,8 @@ class Round:
             current_stage_drivers = []
 
             for pos, row in enumerate(stage.result):
-                
-                #i = self.find_driver_index(row[1])
-                #driver = self.drivers[i]
 
+                driver = None
                 for i, d in enumerate(self.drivers):
                     if d.name == row[1]:
                         driver = d
@@ -118,10 +111,12 @@ class Round:
 
                 if row[3] in nominal_times:
                     row[8] = "RET"
-                    if idx == len(self.stages)-1:
-                        driver.retired = True
                 else:
                     driver.stages_completed.append(stage.number)
+
+                if idx >= len(self.stages)*0.75 and len(driver.stages_completed) < len(self.stages)*0.75:
+                    driver.dnf = True
+                    row[8] = "RET"
 
                 self.drivers[i] = driver
                 
@@ -144,6 +139,7 @@ class Round:
             
             previous_stage_drivers = current_stage_drivers
 
+            stage.result = sorted(stage.result, key=lambda x: not x[8], reverse=True)
             self.stages[idx] = stage
     
     def calculate_standings(self):
@@ -152,21 +148,21 @@ class Round:
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row[1])
                 for driver in self.drivers:
-                    if driver.name == row[1] and len(driver.stages_completed) < len(self.stages)*0.75:
+                    if driver.name == row[1] and driver.dnf:
                         #print(f"{driver.name} has completed {len(driver.stages_completed)} stages")
                         row[7] = "DNF"
                         break
-                    elif driver.name == row[1] and driver.retired:
-                        #print(f"{driver.name} has retired")
-                        row[7] = "RET"
-                        break
+                    # elif driver.name == row[1] and driver.retired:
+                    #     #print(f"{driver.name} has retired")
+                    #     row[7] = "RET"
+                    #     break
                 self.overall.result[pos] = row
 
             for driver in self.drivers:
                 if driver.name not in final_drivers and driver.dnf:
                     self.overall.result.append([len(self.overall.result)+1, driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club, "DNF"])
 
-            self.overall.result = sorted(self.overall.result, key=lambda x: (not x[7], x[7]), reverse=True)
+            self.overall.result = sorted(self.overall.result, key=lambda x: not x[7], reverse=True)
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
