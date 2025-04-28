@@ -86,6 +86,11 @@ class Round:
             for row in self.overall.result:
                 self.wrc_writerow(writer, row)
 
+    def find_driver_index(self, name):
+        for i, d in enumerate(self.drivers):
+            if d.name == name:
+                return i
+
     def find_dnfs(self):                
 
         previous_stage_drivers = []
@@ -96,15 +101,19 @@ class Round:
             current_stage_drivers = []
 
             for pos, row in enumerate(stage.result):
+                
+                i = self.find_driver_index(row[1])
+                driver = self.drivers[i]
 
                 if row[3] in nominal_times:
                     row[0] = "DNF"
                     #row[0] = "RET"
                     if idx == len(self.stages)-1:
-                        for i, driver in enumerate(self.drivers):
-                            if driver.name == row[1]:
-                                driver.retired = True
-                                self.drivers[i] = driver
+                        driver.retired = True
+                else:
+                    driver.stages_completed.append(stage.number)
+
+                self.drivers[i] = driver
                 
                 current_stage_drivers.append(row[1])
                 stage.result[pos] = row
