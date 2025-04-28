@@ -39,8 +39,8 @@ class Round:
                 stage_file = list(csv.reader(f))
 
             #EXAMPLE ROWS:
-            #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '']
-            #['2', 'TheMightyIggy', 'Ford Fiesta WRC', '00:04:24.1590000', '00:00:00', '00:00:00.8980000', 'PSN', '']
+            #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '', '']
+            #['2', 'TheMightyIggy', 'Ford Fiesta WRC', '00:04:24.1590000', '00:00:00', '00:00:00.8980000', 'PSN', '', '']
 
             for idy, row in enumerate(stage_file):
                 if row[1] == "WRC Player":
@@ -48,7 +48,6 @@ class Round:
                         row[1] = wrcplayers[0]
                     else:    
                         row[1] = input(f"Enter the name of the driver in position {row[0]} of stage {str(idx+1)}: ")
-                        stage_file[idy] = row
                         wrcplayers.append(driver.name)
 
                 driver = Driver(row[1], row[2], row[6], self.club)
@@ -61,16 +60,23 @@ class Round:
                 if not driver in self.drivers:
                     self.drivers.append(driver)
 
+                row.append("")
+                stage_file[idy] = row
+
             if idx == len(files) -1:
                 self.overall = Stage(self.number, stage_file)
             else:
                 self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", stage_file))
 
     def wrc_writerow(self, writer, row):
+        position = row[0]
+        if row[-1] != "":
+            position = row[-1]
+
         if self.club == "WREC":
-            writer.writerow(["", row[0], row[1], row[2]])
+            writer.writerow(["", position, row[1], row[2]])
         else:
-            writer.writerow(["", row[0], row[1]])
+            writer.writerow(["", position, row[1]])
 
     def export_results(self):
         file = "Output/" + f"{self.club}/{self.number}" + ".csv"
@@ -86,10 +92,10 @@ class Round:
             for row in self.overall.result:
                 self.wrc_writerow(writer, row)
 
-    def find_driver_index(self, name):
-        for i, d in enumerate(self.drivers):
-            if d.name == name:
-                return i
+    # def find_driver_index(self, name):
+    #     for i, d in enumerate(self.drivers):
+    #         if d.name == name:
+    #             return i
 
     def find_dnfs(self):                
 
@@ -102,12 +108,16 @@ class Round:
 
             for pos, row in enumerate(stage.result):
                 
-                i = self.find_driver_index(row[1])
-                driver = self.drivers[i]
+                #i = self.find_driver_index(row[1])
+                #driver = self.drivers[i]
+
+                for i, d in enumerate(self.drivers):
+                    if d.name == row[1]:
+                        driver = d
+                        break
 
                 if row[3] in nominal_times:
-                    row[0] = "DNF"
-                    #row[0] = "RET"
+                    row[8] = "RET"
                     if idx == len(self.stages)-1:
                         driver.retired = True
                 else:
@@ -122,12 +132,12 @@ class Round:
                 tmp_drivers = []
                 for name in previous_stage_drivers:
                     if name not in current_stage_drivers:
-                        for i, driver in enumerate(self.drivers):
+                        for j, driver in enumerate(self.drivers):
                             if driver.name == name:
-                                stage.result.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', '10:00:00', driver.platform, driver.club])
+                                stage.result.append([len(stage.result)+1, driver.name, driver.car, '10:00:00', '10:00:00', '10:00:00', driver.platform, driver.club, "DNF"])
                                 if idx == len(self.stages)-1:
                                     driver.dnf = True
-                                    self.drivers[i] = driver
+                                    self.drivers[j] = driver
                         tmp_drivers.append(name)
                 
                 current_stage_drivers = current_stage_drivers + tmp_drivers
@@ -142,17 +152,21 @@ class Round:
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row[1])
                 for driver in self.drivers:
-                    # if driver.name == row[1] and driver.retired:
-                    #     row[0] = "DNF"
                     if driver.name == row[1] and len(driver.stages_completed) < len(self.stages)*0.75:
-                        print(f"{driver.name} has completed {len(driver.stages_completed)} stages")
-                        row[0] = "XXX"
+                        #print(f"{driver.name} has completed {len(driver.stages_completed)} stages")
+                        row[7] = "DNF"
+                        break
+                    elif driver.name == row[1] and driver.retired:
+                        #print(f"{driver.name} has retired")
+                        row[7] = "RET"
                         break
                 self.overall.result[pos] = row
 
             for driver in self.drivers:
                 if driver.name not in final_drivers and driver.dnf:
-                    self.overall.result.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club])
+                    self.overall.result.append([len(self.overall.result)+1, driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club, "DNF"])
+
+            self.overall.result = sorted(self.overall.result, key=lambda x: (not x[7], x[7]), reverse=True)
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
