@@ -135,19 +135,24 @@ class Round:
             previous_stage_drivers = current_stage_drivers
 
             self.stages[idx] = stage
-
+    
+    def calculate_standings(self):
         if self.overall:
-            # for pos, row in enumerate(self.overall.result):
-            #     for driver in self.drivers:
-            #         if driver.name == row[1] and driver.retired:
-            #             row[0] = "DNF"
-            #     self.overall.result[pos] = row
+            final_drivers = []
+            for pos, row in enumerate(self.overall.result):
+                final_drivers.append(row[1])
+                for driver in self.drivers:
+                    # if driver.name == row[1] and driver.retired:
+                    #     row[0] = "DNF"
+                    if driver.name == row[1] and len(driver.stages_completed) < len(self.stages)*0.75:
+                        print(f"{driver.name} has completed {len(driver.stages_completed)} stages")
+                        row[0] = "XXX"
+                        break
+                self.overall.result[pos] = row
 
-            if previous_stage_drivers:
-                for name in previous_stage_drivers:
-                    for driver in self.drivers:
-                        if driver.name == name and driver.dnf:
-                            self.overall.result.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club])
+            for driver in self.drivers:
+                if driver.name not in final_drivers and driver.dnf:
+                    self.overall.result.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club])
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
@@ -212,6 +217,7 @@ def main():
         round = Round(club, roundnum)
         round.import_results(files)
         round.find_dnfs()
+        round.calculate_standings()
         round.export_results()
         print("ELO results exported")
     else:
