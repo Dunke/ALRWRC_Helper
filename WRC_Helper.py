@@ -10,14 +10,16 @@ class Driver:
         self.platform = platform
         self.club = club
         self.stages_completed = []
+        self.retired = False
+        self.dnf = False
 
     def __eq__(self, other):
         return self.name == other.name
 
 class Stage:
-    def __init__(self, number, results):
+    def __init__(self, number, result):
         self.number = number
-        self.results = results
+        self.result = result
 
 class Round:
     def __init__(self, club, number):
@@ -25,7 +27,7 @@ class Round:
         self.number = number
         self.drivers = []
         self.stages = []
-        self.results = {}
+        self.overall = None
     
     def import_results(self, files):
 
@@ -60,60 +62,83 @@ class Round:
                     self.drivers.append(driver)
 
             if idx == len(files) -1:
-                self.stages.append(Stage(self.number, stage_file))
+                self.overall = Stage(self.number, stage_file)
             else:
                 self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", stage_file))
-        
-    def export_results(self, files):
-        self.import_results(files)
-        self.find_dnfs()
+
+    def wrc_writerow(self, writer, row):
+        if self.club == "WREC":
+            writer.writerow(["", row[0], row[1], row[2]])
+        else:
+            writer.writerow(["", row[0], row[1]])
+
+    def export_results(self):
         file = "Output/" + f"{self.club}/{self.number}" + ".csv"
 
         with open(file, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
-            for stage in self.results:
-                writer.writerow([stage])
-                for row in self.results[stage]:
-                    if self.club == "WREC":
-                        writer.writerow(["", row[0], row[1], row[2]])
-                    else:
-                        writer.writerow(["", row[0], row[1]])
+            for stage in self.stages:
+                writer.writerow([stage.number])
+                for row in stage.result:
+                    self.wrc_writerow(writer, row)
+                
+            writer.writerow([self.overall.number])
+            for row in self.overall.result:
+                self.wrc_writerow(writer, row)
 
     def find_dnfs(self):                
 
         previous_stage_drivers = []
 
-        for stage in self.stages:
+        for idx, stage in enumerate(self.stages):
 
             nominal_times = ["00:08:00", "00:16:00", "00:25:00", "00:35:00"]
             current_stage_drivers = []
 
-            for idx, row in enumerate(stage.results):
+            for pos, row in enumerate(stage.result):
 
                 if row[3] in nominal_times:
                     row[0] = "DNF"
+                    #row[0] = "RET"
+                    if idx == len(self.stages)-1:
+                        for i, driver in enumerate(self.drivers):
+                            if driver.name == row[1]:
+                                driver.retired = True
+                                self.drivers[i] = driver
                 
                 current_stage_drivers.append(row[1])
-                stage.results[idx] = row
+                stage.result[pos] = row
 
             if previous_stage_drivers:
                 tmp_drivers = []
                 for name in previous_stage_drivers:
                     if name not in current_stage_drivers:
-                        for d in self.drivers:
-                            if d.name == name:
-                                driver = d
-                        if len(stage.number) == 5:
-                            stage.results.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club])
-                        else:
-                            stage.results.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', '10:00:00', driver.platform, driver.club])
+                        for i, driver in enumerate(self.drivers):
+                            if driver.name == name:
+                                stage.result.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', '10:00:00', driver.platform, driver.club])
+                                if idx == len(self.stages)-1:
+                                    driver.dnf = True
+                                    self.drivers[i] = driver
                         tmp_drivers.append(name)
                 
                 current_stage_drivers = current_stage_drivers + tmp_drivers
             
             previous_stage_drivers = current_stage_drivers
 
-            self.results[stage.number] = stage.results
+            self.stages[idx] = stage
+
+        if self.overall:
+            # for pos, row in enumerate(self.overall.result):
+            #     for driver in self.drivers:
+            #         if driver.name == row[1] and driver.retired:
+            #             row[0] = "DNF"
+            #     self.overall.result[pos] = row
+
+            if previous_stage_drivers:
+                for name in previous_stage_drivers:
+                    for driver in self.drivers:
+                        if driver.name == name and driver.dnf:
+                            self.overall.result.append(['DNF', driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club])
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
@@ -171,13 +196,14 @@ def main():
                 stagenum += 1
             elif re.match(overallp, f):
                 overallnum += 1
-        print("Found the following number of stages")
-        print(f"Stage files: {stagenum}")
-        print(f"Overall: {overallnum}")
+        print(f"Found {stagenum} stage file(s).")
+        print(f"Found {overallnum} overall file(s).")
 
     if challenge_yes_or_no():
         round = Round(club, roundnum)
-        round.export_results(files)
+        round.import_results(files)
+        round.find_dnfs()
+        round.export_results()
         print("ELO results exported")
     else:
         print("No results have been exported")
