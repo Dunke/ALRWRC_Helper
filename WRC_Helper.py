@@ -110,14 +110,14 @@ class Round:
                         driver = d
                         break
 
-                if row["time"] in nominal_times:
+                if idx >= len(self.stages)*0.75:
+                    if len(driver.stages_completed) < len(self.stages)*0.75 or row["time"] in nominal_times:
+                        driver.dnf = True
+                        row["status"] = "RET"
+                elif row["time"] in nominal_times:
                     row["status"] = "RET"
                 else:
                     driver.stages_completed.append(stage.number)
-
-                if idx >= len(self.stages)*0.75 and len(driver.stages_completed) < len(self.stages)*0.75:
-                    driver.dnf = True
-                    row["status"] = "RET"
 
                 self.drivers[i] = driver
                 
@@ -150,13 +150,8 @@ class Round:
                 final_drivers.append(row["name"])
                 for driver in self.drivers:
                     if driver.name == row["name"] and driver.dnf:
-                        #print(f"{driver.name} has completed {len(driver.stages_completed)} stages")
                         row["status"] = "DNF"
                         break
-                    # elif driver.name == row[1] and driver.retired:
-                    #     #print(f"{driver.name} has retired")
-                    #     row[7] = "RET"
-                    #     break
                 self.overall.result[pos] = row
 
             for driver in self.drivers:
