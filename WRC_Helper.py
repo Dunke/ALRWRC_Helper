@@ -38,45 +38,46 @@ class Round:
                 next(f)
                 stage_file = list(csv.reader(f))
 
-            #EXAMPLE ROWS:
-            #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '', '']
-            #['2', 'TheMightyIggy', 'Ford Fiesta WRC', '00:04:24.1590000', '00:00:00', '00:00:00.8980000', 'PSN', '', '']
+            #EXAMPLE IN/OUT ROWS:
+            #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '', '']            
+            #{"position": "1", "name": "Slokksi", "car": "Volkswagen Polo 2017", "time": "00:04:23.2610000", "penalty": "00:00:00", "delta": "00:00:00", "platform": "XBOX", "club": "", "status": ""}
 
+            tmp_file = []
             for idy, row in enumerate(stage_file):
-                if row[1] == "WRC Player":
-                    if idy != 0 and len(wrcplayers) == 1:
-                        row[1] = wrcplayers[0]
-                    else:    
-                        row[1] = input(f"Enter the name of the driver in position {row[0]} of stage {str(idx+1)}: ")
-                        wrcplayers.append(driver.name)
-
-                driver = Driver(row[1], row[2], row[6], self.club)
 
                 if idx == len(files) -1:
-                    row[6] = driver.club
+                    new_row = {"position": row[0], "name": row[1], "car": row[2], "time": row[3], "delta": row[4], "platform": row[5], "club": self.club, "status": ""}
                 else:
-                    row[7] = driver.club
+                    new_row = {"position": row[0], "name": row[1], "car": row[2], "time": row[3], "penalty": row[4], "delta": row[5], "platform": row[6], "club": self.club, "status": ""}
+
+                if new_row["name"] == "WRC Player":
+                    if idy != 0 and len(wrcplayers) == 1:
+                        new_row["name"] = wrcplayers[0]
+                    else:    
+                        new_row["name"] = input(f"Enter the name of the driver in position {new_row["position"]} of stage {str(idx+1)}: ")
+                        wrcplayers.append(driver.name)
+
+                driver = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
 
                 if not driver in self.drivers:
                     self.drivers.append(driver)
 
-                row.append("")
-                stage_file[idy] = row
+                tmp_file.append(new_row)
 
             if idx == len(files) -1:
-                self.overall = Stage(self.number, stage_file)
+                self.overall = Stage(self.number, tmp_file)
             else:
-                self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", stage_file))
+                self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", tmp_file))
 
     def wrc_writerow(self, writer, row):
-        position = row[0]
-        if row[-1] != "":
-            position = row[-1]
+        position = row["position"]
+        if row["status"] != "":
+            position = row["status"]
 
         if self.club == "WREC":
-            writer.writerow(["", position, row[1], row[2]])
+            writer.writerow(["", position, row["name"], row["car"]])
         else:
-            writer.writerow(["", position, row[1]])
+            writer.writerow(["", position, row["name"]])
 
     def export_results(self):
         file = "Output/" + f"{self.club}/{self.number}" + ".csv"
@@ -105,22 +106,22 @@ class Round:
 
                 driver = None
                 for i, d in enumerate(self.drivers):
-                    if d.name == row[1]:
+                    if d.name == row["name"]:
                         driver = d
                         break
 
-                if row[3] in nominal_times:
-                    row[8] = "RET"
+                if row["time"] in nominal_times:
+                    row["status"] = "RET"
                 else:
                     driver.stages_completed.append(stage.number)
 
                 if idx >= len(self.stages)*0.75 and len(driver.stages_completed) < len(self.stages)*0.75:
                     driver.dnf = True
-                    row[8] = "RET"
+                    row["status"] = "RET"
 
                 self.drivers[i] = driver
                 
-                current_stage_drivers.append(row[1])
+                current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
 
             if previous_stage_drivers:
@@ -129,7 +130,7 @@ class Round:
                     if name not in current_stage_drivers:
                         for j, driver in enumerate(self.drivers):
                             if driver.name == name:
-                                stage.result.append([len(stage.result)+1, driver.name, driver.car, '10:00:00', '10:00:00', '10:00:00', driver.platform, driver.club, "DNF"])
+                                stage.result.append({"position": len(stage.result)+1, "name": driver.name, "car": driver.car, "time": "10:00:00", "penalty": "10:00:00", "delta": "10:00:00", "platform": driver.platform, "club": driver.club, "status": "DNF"})
                                 if idx == len(self.stages)-1:
                                     driver.dnf = True
                                     self.drivers[j] = driver
@@ -139,18 +140,18 @@ class Round:
             
             previous_stage_drivers = current_stage_drivers
 
-            stage.result = sorted(stage.result, key=lambda x: not x[8], reverse=True)
+            stage.result = sorted(stage.result, key=lambda x: not x["status"], reverse=True)
             self.stages[idx] = stage
     
     def calculate_standings(self):
         if self.overall:
             final_drivers = []
             for pos, row in enumerate(self.overall.result):
-                final_drivers.append(row[1])
+                final_drivers.append(row["name"])
                 for driver in self.drivers:
-                    if driver.name == row[1] and driver.dnf:
+                    if driver.name == row["name"] and driver.dnf:
                         #print(f"{driver.name} has completed {len(driver.stages_completed)} stages")
-                        row[7] = "DNF"
+                        row["status"] = "DNF"
                         break
                     # elif driver.name == row[1] and driver.retired:
                     #     #print(f"{driver.name} has retired")
@@ -160,9 +161,9 @@ class Round:
 
             for driver in self.drivers:
                 if driver.name not in final_drivers and driver.dnf:
-                    self.overall.result.append([len(self.overall.result)+1, driver.name, driver.car, '10:00:00', '10:00:00', driver.platform, driver.club, "DNF"])
+                    self.overall.result.append({"position": len(self.overall.result)+1, "name": driver.name, "car": driver.car, "time": "10:00:00", "delta": "10:00:00", "platform": driver.platform, "club": driver.club, "status": "DNF"})
 
-            self.overall.result = sorted(self.overall.result, key=lambda x: not x[7], reverse=True)
+            self.overall.result = sorted(self.overall.result, key=lambda x: not x["status"], reverse=True)
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
