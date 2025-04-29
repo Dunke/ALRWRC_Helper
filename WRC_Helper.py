@@ -231,32 +231,32 @@ def main():
             else:
                 is_looping = False
 
-    files = {}
+    round_files = {}
     for path in paths:
         temp = (glob.glob(f"{path}/*.csv"))
         temp = sorted(temp, key= lambda x: re.split(r"/|\\", x)[-1])
         temp = sorted(temp, key=len)
-        files[path.split("/")[0]] = temp
+        round_files[path.split("/")[0]] = temp
     
-    if not any(files.values()):
+    if not any(round_files.values()):
         quit("No files were found")
     else:
-        for tmp_club in files:
-            stagep = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
-            overallp = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
-            stagenum = 0
-            overallnum = 0
-            for path in files[tmp_club]:
-                if re.match(stagep, path):
-                    stagenum += 1
-                elif re.match(overallp, path):
-                    overallnum += 1
-            print(f"Found {stagenum} stage file(s) in {tmp_club}.")
-            print(f"Found {overallnum} overall file(s) in {tmp_club}.")
+        for club_file in round_files:
+            stage_pattern = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
+            overall_pattern = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
+            stage_count = 0
+            overall_count = 0
+            for path in round_files[club_file]:
+                if re.match(stage_pattern, path):
+                    stage_count += 1
+                elif re.match(overall_pattern, path):
+                    overall_count += 1
+            print(f"Found {stage_count} stage file(s) in {club_file}.")
+            print(f"Found {overall_count} overall file(s) in {club_file}.")
 
     if challenge_yes_or_no():
         round = Round(club, roundnum)
-        round.import_stages(files)
+        round.import_stages(round_files)
         round.find_dnfs()
         round.calculate_standings()
         #round.export_results()
