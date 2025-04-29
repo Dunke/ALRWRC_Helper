@@ -25,7 +25,7 @@ class Round:
     def __init__(self, club, number):
         self.club = club
         self.number = number
-        self.drivers = []
+        self.drivers = {}
         self.stages = []
         self.overall = None
     
@@ -46,9 +46,24 @@ class Round:
             for idy, row in enumerate(stage_file):
 
                 if idx == len(files) -1:
-                    new_row = {"position": row[0], "name": row[1], "car": row[2], "time": row[3], "delta": row[4], "platform": row[5], "club": self.club, "status": ""}
+                    new_row = {"position": row[0], 
+                               "name": row[1], 
+                               "car": row[2], 
+                               "time": row[3], 
+                               "delta": row[4], 
+                               "platform": row[5], 
+                               "club": self.club, 
+                               "status": ""}
                 else:
-                    new_row = {"position": row[0], "name": row[1], "car": row[2], "time": row[3], "penalty": row[4], "delta": row[5], "platform": row[6], "club": self.club, "status": ""}
+                    new_row = {"position": row[0], 
+                               "name": row[1], 
+                               "car": row[2], 
+                               "time": row[3], 
+                               "penalty": row[4], 
+                               "delta": row[5], 
+                               "platform": row[6], 
+                               "club": self.club, 
+                               "status": ""}
 
                 if new_row["name"] == "WRC Player":
                     if idy != 0 and len(wrcplayers) == 1:
@@ -59,8 +74,8 @@ class Round:
 
                 driver = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
 
-                if not driver in self.drivers:
-                    self.drivers.append(driver)
+                if new_row["name"] not in self.drivers:
+                    self.drivers[new_row["name"]] = driver
 
                 tmp_file.append(new_row)
 
@@ -104,11 +119,7 @@ class Round:
 
             for pos, row in enumerate(stage.result):
 
-                driver = None
-                for i, d in enumerate(self.drivers):
-                    if d.name == row["name"]:
-                        driver = d
-                        break
+                driver = self.drivers[row["name"]]
 
                 if idx >= len(self.stages)*0.75:
                     if len(driver.stages_completed) < len(self.stages)*0.75 or row["time"] in nominal_times:
@@ -119,7 +130,7 @@ class Round:
                 else:
                     driver.stages_completed.append(stage.number)
 
-                self.drivers[i] = driver
+                self.drivers[row["name"]] = driver
                 
                 current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
@@ -128,12 +139,18 @@ class Round:
                 tmp_drivers = []
                 for name in previous_stage_drivers:
                     if name not in current_stage_drivers:
-                        for j, driver in enumerate(self.drivers):
-                            if driver.name == name:
-                                stage.result.append({"position": len(stage.result)+1, "name": driver.name, "car": driver.car, "time": "10:00:00", "penalty": "10:00:00", "delta": "10:00:00", "platform": driver.platform, "club": driver.club, "status": "DNF"})
-                                if idx == len(self.stages)-1:
-                                    driver.dnf = True
-                                    self.drivers[j] = driver
+                        stage.result.append({
+                            "position": len(stage.result)+1, 
+                            "name": self.drivers[name].name, 
+                            "car": self.drivers[name].car, 
+                            "time": "10:00:00", 
+                            "penalty": "10:00:00", 
+                            "delta": "10:00:00", 
+                            "platform": self.drivers[name].platform, 
+                            "club": self.drivers[name].club, 
+                            "status": "DNF"})
+                        if idx == len(self.stages)-1:
+                            self.drivers[name].dnf = True
                         tmp_drivers.append(name)
                 
                 current_stage_drivers = current_stage_drivers + tmp_drivers
@@ -148,15 +165,20 @@ class Round:
             final_drivers = []
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row["name"])
-                for driver in self.drivers:
-                    if driver.name == row["name"] and driver.dnf:
-                        row["status"] = "DNF"
-                        break
+                if self.drivers[row["name"]].dnf:
+                    row["status"] = "DNF"
                 self.overall.result[pos] = row
 
-            for driver in self.drivers:
-                if driver.name not in final_drivers and driver.dnf:
-                    self.overall.result.append({"position": len(self.overall.result)+1, "name": driver.name, "car": driver.car, "time": "10:00:00", "delta": "10:00:00", "platform": driver.platform, "club": driver.club, "status": "DNF"})
+            if self.drivers[row["name"]].name not in final_drivers and self.drivers[row["name"]].dnf:
+                self.overall.result.append({
+                    "position": len(self.overall.result)+1, 
+                    "name": self.drivers[row["name"]].name, 
+                    "car": self.drivers[row["name"]].car, 
+                    "time": "10:00:00", 
+                    "delta": "10:00:00", 
+                    "platform": self.drivers[row["name"]].platform, 
+                    "club": self.drivers[row["name"]].club, 
+                    "status": "DNF"})
 
             self.overall.result = sorted(self.overall.result, key=lambda x: not x["status"], reverse=True)
 
