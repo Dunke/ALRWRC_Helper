@@ -11,7 +11,7 @@ class Driver:
         self.platform = platform
         self.club = club
         self.stages_completed = []
-        self.retired = False
+        self.dnq = False
         self.dnf = False
 
     def __eq__(self, other):
@@ -115,9 +115,7 @@ class Round:
             for row in self.overall.result:
                 self.wrc_writerow(writer, row)
 
-    def find_dnfs(self):                
-
-        previous_stage_drivers = []
+    def find_dnfs(self):
 
         for idx, stage in enumerate(self.stages):
 
@@ -128,10 +126,10 @@ class Round:
 
                 driver = self.drivers[row["name"]]
 
-                if idx >= len(self.stages)*0.75 and len(driver.stages_completed) < len(self.stages)*0.75:
-                    driver.dnf = True
+                if idx >= len(self.stages)-1 and len(driver.stages_completed) < len(self.stages)*0.75:
+                    driver.dnq = True
 
-                if driver.dnf:
+                if driver.dnq:
                     row["status"] = "DNF"  
                 elif row["time"] in nominal_times:
                     row["status"] = "RET"
@@ -143,27 +141,21 @@ class Round:
                 current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
 
-            if previous_stage_drivers:
-                tmp_drivers = []
-                for name in previous_stage_drivers:
-                    if name not in current_stage_drivers:
-                        stage.result.append({
-                            "position": len(stage.result)+1, 
-                            "name": self.drivers[name].name, 
-                            "car": self.drivers[name].car, 
-                            "time": "10:00:00", 
-                            "penalty": "10:00:00", 
-                            "delta": "10:00:00", 
-                            "platform": self.drivers[name].platform, 
-                            "club": self.drivers[name].club, 
-                            "status": "DNF"})
-                        if idx == len(self.stages)-1:
-                            self.drivers[name].dnf = True
-                        tmp_drivers.append(name)
-                
-                current_stage_drivers = current_stage_drivers + tmp_drivers
-            
-            previous_stage_drivers = current_stage_drivers
+            missing_drivers = [driver for driver in self.drivers if self.drivers[driver].name not in current_stage_drivers]
+            for name in missing_drivers:
+                print(self.drivers[name].name)
+                stage.result.append({
+                    "position": len(stage.result)+1, 
+                    "name": self.drivers[name].name, 
+                    "car": self.drivers[name].car, 
+                    "time": "10:00:00", 
+                    "penalty": "10:00:00", 
+                    "delta": "10:00:00", 
+                    "platform": self.drivers[name].platform, 
+                    "club": self.drivers[name].club, 
+                    "status": "DNF"})
+                if idx == len(self.stages)-1:
+                    self.drivers[name].dnf = True
 
             stage.result = sorted(stage.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             self.stages[idx] = stage
@@ -173,7 +165,7 @@ class Round:
             final_drivers = []
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row["name"])
-                if self.drivers[row["name"]].dnf:
+                if self.drivers[row["name"]].dnf or len(self.drivers[row["name"]].stages_completed) < len(self.stages)*0.75:
                     row["status"] = "DNF"
                 self.overall.result[pos] = row
 
@@ -200,7 +192,6 @@ class Round:
         wrc2_stages.append(self.multiclass_overall[1])
         
         for idx, stage in enumerate(wrc1_stages):
-            print(stage.number)
             merged_stage = [x for x in chain.from_iterable(zip_longest(stage.result, wrc2_stages[idx].result, fillvalue=None))]
             merged_stage = list(filter(None, merged_stage))
             merged_stage = sorted(merged_stage, key= lambda x: x["time"])
@@ -229,7 +220,7 @@ def challenge_yes_or_no(question="Continue?"):
 
 def main():
     club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
-    valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}
+    valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
     
     for category in club_folders: #Create the folder structure if it doesn't exist
         for folder in club_folders[category]:
@@ -292,6 +283,9 @@ def main():
         round.find_dnfs()
         round.calculate_standings()
         round.export_results()
+        dnf_drivers = [driver for driver in round.drivers if round.drivers[driver].dnf]
+        for driver in dnf_drivers:
+            print(f'{round.drivers[driver].name} failed to retire properly!')
         print("ELO results exported")
     else:
         print("No results have been exported")
