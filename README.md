@@ -1,7 +1,7 @@
 ## How to use (DO NOT USE FOR ALRWRC SEASON 7!)
 
 1. Clone or download the repo to a suitable location.
-2. Create a new folder in the relevant clubs' folder and name it S# R# with the numbers for the season and round.
+2. Create a new folder in the relevant clubs' folder and name it `S# R#` with the numbers for the season and round.
 3. Download all stage files and the final overall file from Racenet and put in the corresponding folder.
 4. Open a new Terminal or PowerShell window in the same folder as the script.
 5. Run the script in the way that is relevant to your system.
