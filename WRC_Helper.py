@@ -121,10 +121,11 @@ class Round:
 
                 driver = self.drivers[row["name"]]
 
-                if idx >= len(self.stages)*0.75:
-                    if len(driver.stages_completed) < len(self.stages)*0.75 or row["time"] in nominal_times:
-                        driver.dnf = True
-                        row["status"] = "RET"
+                if idx >= len(self.stages)*0.75 and len(driver.stages_completed) < len(self.stages)*0.75:
+                    driver.dnf = True
+
+                if driver.dnf:
+                    row["status"] = "DNF"  
                 elif row["time"] in nominal_times:
                     row["status"] = "RET"
                 else:
@@ -157,7 +158,7 @@ class Round:
             
             previous_stage_drivers = current_stage_drivers
 
-            stage.result = sorted(stage.result, key=lambda x: not x["status"], reverse=True)
+            stage.result = sorted(stage.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             self.stages[idx] = stage
     
     def calculate_standings(self):
@@ -180,7 +181,7 @@ class Round:
                     "club": self.drivers[row["name"]].club, 
                     "status": "DNF"})
 
-            self.overall.result = sorted(self.overall.result, key=lambda x: not x["status"], reverse=True)
+            self.overall.result = sorted(self.overall.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
