@@ -184,6 +184,9 @@ class Round:
 
             self.overall.result = sorted(self.overall.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
 
+    def merge_stages(self):
+        pass
+
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
     valid = {"y": True, "yes": True, "n": False, "no": False}
@@ -197,58 +200,66 @@ def challenge_yes_or_no(question="Continue?"):
 
 def main():
     clubs = ("WRC1", "WRC2", "WREC")
+    valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}
     
     for c in clubs: #Create the folder structure if it doesn't exist
         Path(c).mkdir(exist_ok=True)
         Path("Output/" + c).mkdir(parents=True, exist_ok=True)
     
     while True:
-        club = input("Enter the name of the club (WRC1 / WRC2 / WREC): ").upper()
-        if club not in clubs:
+        club = input("Enter the name of the club (WRC / WREC): ").upper()
+        if club not in valid_clubs:
             if not challenge_yes_or_no(f"{club} is not a valid club. Try again?"):
                 quit("No results have been exported")
         else:
             break
     
-    while True:
+    is_looping = True
+    while is_looping:
         roundnum = input("Enter the season and round as 'S# R#': ").upper()
-        path = f"{club}/{roundnum}"
-        if not Path(path).is_dir():
-            if not challenge_yes_or_no(f"No directory for {path} exists. Try again?"):
+        paths = [f"{path}/{roundnum}" for path in valid_clubs[club]]
+        for path in paths:
+            if not Path(path).is_dir():
+                print(f"No directory for {path} exists. Please make sure the Racenet files are in the correct place.")
                 quit("No results have been exported")
-        elif Path(f"Output/{path}.csv").is_file():
-            if not challenge_yes_or_no(f"An output for {club} {roundnum} already exists. Overwrite?"):
-                quit("No results have been exported")
+            elif Path(f"Output/{club}/{roundnum}.csv").is_file():
+                if not challenge_yes_or_no(f"An output for {club} {roundnum} already exists. Overwrite?"):
+                    quit("No results have been exported")
+                else:
+                    is_looping = False
+                    break
             else:
-                break
-        else:
-            break
-    
-    files = glob.glob(path + "/" + "*.csv")
-    files = sorted(files, key= lambda x: re.split(r"/|\\", x)[-1])
-    files = sorted(files, key=len)
+                is_looping = False
 
-    if not files:
+    files = {}
+    for path in paths:
+        temp = (glob.glob(f"{path}/*.csv"))
+        temp = sorted(temp, key= lambda x: re.split(r"/|\\", x)[-1])
+        temp = sorted(temp, key=len)
+        files[path.split("/")[0]] = temp
+    
+    if not any(files.values()):
         quit("No files were found")
     else:
-        stagep = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
-        overallp = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
-        stagenum = 0
-        overallnum = 0
-        for f in files:
-            if re.match(stagep, f):
-                stagenum += 1
-            elif re.match(overallp, f):
-                overallnum += 1
-        print(f"Found {stagenum} stage file(s).")
-        print(f"Found {overallnum} overall file(s).")
+        for tmp_club in files:
+            stagep = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
+            overallp = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
+            stagenum = 0
+            overallnum = 0
+            for path in files[tmp_club]:
+                if re.match(stagep, path):
+                    stagenum += 1
+                elif re.match(overallp, path):
+                    overallnum += 1
+            print(f"Found {stagenum} stage file(s) in {tmp_club}.")
+            print(f"Found {overallnum} overall file(s) in {tmp_club}.")
 
     if challenge_yes_or_no():
         round = Round(club, roundnum)
         round.import_stages(files)
         round.find_dnfs()
         round.calculate_standings()
-        round.export_results()
+        #round.export_results()
         print("ELO results exported")
     else:
         print("No results have been exported")
