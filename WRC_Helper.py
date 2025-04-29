@@ -135,27 +135,24 @@ class Round:
                     row["status"] = "RET"
                 else:
                     driver.stages_completed.append(stage.number)
-
-                self.drivers[row["name"]] = driver
                 
                 current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
 
-            missing_drivers = [driver for driver in self.drivers if self.drivers[driver].name not in current_stage_drivers]
-            for name in missing_drivers:
-                print(self.drivers[name].name)
+            missing_drivers = [driver for driver in self.drivers.values() if driver.name not in current_stage_drivers]
+            for driver in missing_drivers:
                 stage.result.append({
                     "position": len(stage.result)+1, 
-                    "name": self.drivers[name].name, 
-                    "car": self.drivers[name].car, 
+                    "name": driver.name, 
+                    "car": driver.car, 
                     "time": "10:00:00", 
                     "penalty": "10:00:00", 
                     "delta": "10:00:00", 
-                    "platform": self.drivers[name].platform, 
-                    "club": self.drivers[name].club, 
+                    "platform": driver.platform, 
+                    "club": driver.club, 
                     "status": "DNF"})
                 if idx == len(self.stages)-1:
-                    self.drivers[name].dnf = True
+                    driver.dnf = True
 
             stage.result = sorted(stage.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             self.stages[idx] = stage
@@ -283,9 +280,9 @@ def main():
         round.find_dnfs()
         round.calculate_standings()
         round.export_results()
-        dnf_drivers = [driver for driver in round.drivers if round.drivers[driver].dnf]
+        dnf_drivers = [driver for driver in round.drivers.values() if driver.dnf]
         for driver in dnf_drivers:
-            print(f'{round.drivers[driver].name} failed to retire properly!')
+            print(f'{driver.name} failed to retire properly!')
         print("ELO results exported")
     else:
         print("No results have been exported")
