@@ -282,7 +282,7 @@ def main():
         round.export_results()
         dnf_drivers = [driver for driver in round.drivers.values() if driver.dnf]
         for driver in dnf_drivers:
-            print(f'{driver.name} failed to retire properly!')
+            print(f'-- {driver.name} failed to retire properly! --')
         print("ELO results exported")
     else:
         print("No results have been exported")
