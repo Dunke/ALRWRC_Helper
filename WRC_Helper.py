@@ -29,7 +29,7 @@ class Round:
         self.stages = []
         self.overall = None
     
-    def import_results(self, files):
+    def import_stages(self, files):
 
         wrcplayers = []
 
@@ -170,16 +170,17 @@ class Round:
                     row["status"] = "DNF"
                 self.overall.result[pos] = row
 
-            if self.drivers[row["name"]].name not in final_drivers and self.drivers[row["name"]].dnf:
-                self.overall.result.append({
-                    "position": len(self.overall.result)+1, 
-                    "name": self.drivers[row["name"]].name, 
-                    "car": self.drivers[row["name"]].car, 
-                    "time": "10:00:00", 
-                    "delta": "10:00:00", 
-                    "platform": self.drivers[row["name"]].platform, 
-                    "club": self.drivers[row["name"]].club, 
-                    "status": "DNF"})
+            for driver in self.drivers.values():
+                if driver.name not in final_drivers and driver.dnf:
+                    self.overall.result.append({
+                        "position": len(self.overall.result)+1, 
+                        "name": driver.name, 
+                        "car": driver.car, 
+                        "time": "10:00:00", 
+                        "delta": "10:00:00", 
+                        "platform": driver.platform, 
+                        "club": driver.club, 
+                        "status": "DNF"})
 
             self.overall.result = sorted(self.overall.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
 
@@ -244,7 +245,7 @@ def main():
 
     if challenge_yes_or_no():
         round = Round(club, roundnum)
-        round.import_results(files)
+        round.import_stages(files)
         round.find_dnfs()
         round.calculate_standings()
         round.export_results()
