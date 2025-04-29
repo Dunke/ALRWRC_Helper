@@ -228,12 +228,13 @@ def challenge_yes_or_no(question="Continue?"):
             print("Please respond with y or n")
 
 def main():
-    clubs = ("WRC1", "WRC2", "WREC")
+    club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
     valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}
     
-    for c in clubs: #Create the folder structure if it doesn't exist
-        Path(c).mkdir(exist_ok=True)
-        Path("Output/" + c).mkdir(parents=True, exist_ok=True)
+    for category in club_folders: #Create the folder structure if it doesn't exist
+        for folder in club_folders[category]:
+            folder = folder if category == "Input" else f"{category}/{folder}"
+            Path(folder).mkdir(parents=True, exist_ok=True)
     
     while True:
         club = input("Enter the name of the club (WRC / WREC): ").upper()
