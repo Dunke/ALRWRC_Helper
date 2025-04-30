@@ -10,7 +10,7 @@ class Driver:
         self.car = car
         self.platform = platform
         self.club = club
-        self.stages_completed = []
+        self.completed_stages = []
         self.dnq = False
         self.dnf = False
 
@@ -30,6 +30,7 @@ class Round:
         self.stages = []
         self.overall = None
         self.multiclass_overall = []
+        self.wrec_last_day = 0
     
     def import_stages(self, files):
 
@@ -91,13 +92,19 @@ class Round:
                 else:
                     self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", temp_file))
 
-    def wrc_writerow(self, writer, row):
-        position = row["position"]
-        if row["status"] != "":
-            position = row["status"]
-
+    def wrc_writerow(self, writer, row, overall_stage):
+        position = row["position"] if row["status"] == "" else row["status"]
+        
         if self.club == "WREC":
-            writer.writerow(["", position, row["name"], row["car"]])
+            if overall_stage:
+                first_days_stages = [stage for stage in self.drivers[row["name"]].completed_stages[:self.wrec_last_day]]
+                last_day_stages = [stage for stage in self.drivers[row["name"]].completed_stages[self.wrec_last_day:]]
+                survived_first_days = "YES" if first_days_stages and first_days_stages[-1].split(" ")[-1] == f'S{self.wrec_last_day}' else "NO"
+                survived_last_day = "YES" if last_day_stages and last_day_stages[-1].split(" ")[-1] == f'S{len(self.stages)}' else "NO"
+
+                writer.writerow(["", position, row["name"], row["car"], "", survived_first_days, survived_last_day])
+            else:
+                writer.writerow(["", position, row["name"], row["car"]])
         else:
             writer.writerow(["", position, row["name"], row["club"]])
 
@@ -109,11 +116,11 @@ class Round:
             for stage in self.stages:
                 writer.writerow([stage.number])
                 for row in stage.result:
-                    self.wrc_writerow(writer, row)
+                    self.wrc_writerow(writer, row, False)
                 
             writer.writerow([self.overall.number])
             for row in self.overall.result:
-                self.wrc_writerow(writer, row)
+                self.wrc_writerow(writer, row, True)
 
     def find_dnfs(self):
 
@@ -126,15 +133,15 @@ class Round:
 
                 driver = self.drivers[row["name"]]
 
-                if idx >= len(self.stages)-1 and len(driver.stages_completed) < len(self.stages)*0.75:
+                if idx >= len(self.stages)-1 and len(driver.completed_stages) < len(self.stages)*0.75:
                     driver.dnq = True
 
-                if driver.dnq:
+                if driver.dnq and self.club != "WREC":
                     row["status"] = "DNF"  
                 elif row["time"] in nominal_times:
-                    row["status"] = "RET"
+                    row["status"] = "DNF" if self.club == "WREC" else "RET"
                 else:
-                    driver.stages_completed.append(stage.number)
+                    driver.completed_stages.append(stage.number)
                 
                 current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
@@ -162,8 +169,7 @@ class Round:
             final_drivers = []
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row["name"])
-                if self.drivers[row["name"]].dnf or len(self.drivers[row["name"]].stages_completed) < len(self.stages)*0.75:
-                    row["status"] = "DNF"
+                row["status"] = "DNF" if self.drivers[row["name"]].dnf or len(self.drivers[row["name"]].completed_stages) < len(self.stages)*0.75 else ""
                 self.overall.result[pos] = row
 
             for driver in self.drivers.values():
@@ -274,6 +280,22 @@ def main():
 
     if challenge_yes_or_no():
         round = Round(club, round_number)
+
+        wrec_last_day = None
+        if club == "WREC":
+            while True:
+                try:
+                    wrec_last_day = int(input("Enter the stage number for the first stage of Day 4: "))
+                    if int(wrec_last_day) > len(round_files["WREC"]) -1:
+                        if not challenge_yes_or_no(f'{wrec_last_day} must be less than {len(round_files["WREC"]) -1}. Try again?'):
+                            quit("No results have been exported")
+                    else:
+                        round.wrec_last_day = wrec_last_day
+                        break
+                except:
+                    if not challenge_yes_or_no(f'You must enter a number less than {len(round_files["WREC"]) -1}. Try again?'):
+                        quit("No results have been exported")
+
         round.import_stages(round_files)
         if len(valid_clubs[club]) > 1:
             round.merge_stages()
