@@ -33,7 +33,7 @@ class Round:
     
     def import_stages(self, files):
 
-        wrcplayers = []
+        wrc_players = []
 
         for club in files:
             for idx, file in enumerate(files[club]):
@@ -46,7 +46,7 @@ class Round:
                 #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '', '']            
                 #{"position": "1", "name": "Slokksi", "car": "Volkswagen Polo 2017", "time": "00:04:23.2610000", "penalty": "00:00:00", "delta": "00:00:00", "platform": "XBOX", "club": "", "status": ""}
 
-                tmp_file = []
+                temp_file = []
                 for idy, row in enumerate(stage_file):
 
                     if idx == len(files[club]) -1:
@@ -70,26 +70,26 @@ class Round:
                                 "status": ""}
 
                     if new_row["name"] == "WRC Player":
-                        if idy != 0 and len(wrcplayers) == 1:
-                            new_row["name"] = wrcplayers[0]
+                        if idy != 0 and len(wrc_players) == 1:
+                            new_row["name"] = wrc_players[0]
                         else:    
                             new_row["name"] = input(f"Enter the name of the driver in position {new_row['position']} of stage {str(idx+1)}: ")
-                            wrcplayers.append(driver.name)
+                            wrc_players.append(driver.name)
 
                     driver = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
 
                     if new_row["name"] not in self.drivers:
                         self.drivers[new_row["name"]] = driver
 
-                    tmp_file.append(new_row)
+                    temp_file.append(new_row)
 
                 if idx == len(files[club]) -1:
                     if len(files) == 1:
-                        self.overall = Stage(self.number, tmp_file)
+                        self.overall = Stage(self.number, temp_file)
                     else:
-                        self.multiclass_overall.append(Stage(self.number, tmp_file))
+                        self.multiclass_overall.append(Stage(self.number, temp_file))
                 else:
-                    self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", tmp_file))
+                    self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", temp_file))
 
     def wrc_writerow(self, writer, row):
         position = row["position"]
@@ -232,22 +232,22 @@ def main():
         else:
             break
     
-    is_looping = True
-    while is_looping:
-        roundnum = input("Enter the season and round as 'S# R#': ").upper()
-        paths = [f"{path}/{roundnum}" for path in valid_clubs[club]]
+    looking_for_path = True
+    while looking_for_path:
+        round_number = input("Enter the season and round as 'S# R#': ").upper()
+        paths = [f"{path}/{round_number}" for path in valid_clubs[club]]
         for path in paths:
             if not Path(path).is_dir():
                 print(f"No directory for {path} exists. Please make sure the Racenet files are in the correct place.")
                 quit("No results have been exported")
-            elif Path(f"Output/{club}/{roundnum}.csv").is_file():
-                if not challenge_yes_or_no(f"An output for {club} {roundnum} already exists. Overwrite?"):
+            elif Path(f"Output/{club}/{round_number}.csv").is_file():
+                if not challenge_yes_or_no(f"An output for {club} {round_number} already exists. Overwrite?"):
                     quit("No results have been exported")
                 else:
-                    is_looping = False
+                    looking_for_path = False
                     break
             else:
-                is_looping = False
+                looking_for_path = False
 
     round_files = {}
     for path in paths:
@@ -273,16 +273,18 @@ def main():
             print(f"Found {overall_count} overall file(s) in {club_file}.")
 
     if challenge_yes_or_no():
-        round = Round(club, roundnum)
+        round = Round(club, round_number)
         round.import_stages(round_files)
         if len(valid_clubs[club]) > 1:
             round.merge_stages()
         round.find_dnfs()
         round.calculate_standings()
         round.export_results()
+        
         dnf_drivers = [driver for driver in round.drivers.values() if driver.dnf]
         for driver in dnf_drivers:
             print(f'-- {driver.name} failed to retire properly! --')
+        
         print("ELO results exported")
     else:
         print("No results have been exported")
