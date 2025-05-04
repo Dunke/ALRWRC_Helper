@@ -4,6 +4,9 @@ from itertools import zip_longest, chain
 from pathlib import Path
 import re
 
+club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
+valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
+
 class Driver:
     def __init__(self, name, car, platform, club):
         self.name = name
@@ -18,21 +21,47 @@ class Driver:
         return self.name == other.name
 
 class Stage:
-    def __init__(self, number, result):
+    def __init__(self, number, result, club):
         self.number = number
         self.result = result
+        self.club = club
 
 class Round:
     def __init__(self, club, number):
         self.club = club
         self.number = number
         self.drivers = {}
-        self.duplicate_drivers = {}
+        self.duplicate_drivers = []
         self.stages = []
         self.overall = None
         self.multiclass_overall = []
         self.wrec_last_day = 0
     
+    def remove_duplicate_drivers(self):
+        for driver in self.duplicate_drivers:
+            while True:
+                incorrect_club = input(f'Which club should {driver} be removed from? ').upper()
+                if not incorrect_club in valid_clubs[self.club]:
+                    print("Invalid club. Try again.")
+                else:
+                    break
+   
+            for stage in self.stages:
+                if stage.club == incorrect_club:
+                    for row in stage.result:
+                        if row.get("name") == driver:
+                            stage.result.remove(row)
+                            continue
+                    continue
+
+            for stage in self.multiclass_overall:
+                if stage.club == incorrect_club:
+                    for row in stage.result:
+                        if row.get("name") == driver:
+                            stage.result.remove(row)
+                            continue
+                    continue
+
     def import_stages(self, files):
 
         wrc_players = []
@@ -83,17 +112,22 @@ class Round:
                     elif idx < 2 and new_row["name"] in self.drivers and self.drivers[new_row["name"]].club != new_row["club"]:
                         if new_row["name"] not in self.duplicate_drivers:
                             print(f'{new_row["name"]} has participated in two clubs!')
-                            self.duplicate_drivers[new_row["name"]] = new_row["club"]
+                            self.duplicate_drivers.append(new_row["name"])
 
                     temp_file.append(new_row)
 
                 if idx == len(files[club]) -1:
                     if len(files) == 1:
-                        self.overall = Stage(self.number, temp_file)
+                        self.overall = Stage(self.number, temp_file, club)
                     else:
-                        self.multiclass_overall.append(Stage(self.number, temp_file))
+                        self.multiclass_overall.append(Stage(self.number, temp_file, club))
                 else:
-                    self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", temp_file))
+                    self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", temp_file, club))
+
+        #TODO: Probably a good place to remove duplicate drivers.
+        if self.club != "WREC":
+            self.remove_duplicate_drivers()
+
 
     def wrc_writerow(self, writer, row, overall_stage):
         position = row["position"] if row["status"] == "" else row["status"]
@@ -207,11 +241,11 @@ class Round:
         
             temp_stages[stage.number] = merged_stage
         
-        self.overall = Stage(self.number, temp_stages.pop(self.number))
+        self.overall = Stage(self.number, temp_stages.pop(self.number), None)
         self.stages = []
 
         for stage in temp_stages:
-            self.stages.append(Stage(stage, temp_stages[stage]))
+            self.stages.append(Stage(stage, temp_stages[stage], None))
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
@@ -224,10 +258,7 @@ def challenge_yes_or_no(question="Continue?"):
         else:
             print("Please respond with y or n")
 
-def main():
-    club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
-    valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
-    
+def main():    
     for category in club_folders: #Create the folder structure if it doesn't exist
         for folder in club_folders[category]:
             folder = folder if category == "Input" else f"{category}/{folder}"
