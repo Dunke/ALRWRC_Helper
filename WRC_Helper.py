@@ -281,7 +281,7 @@ def main():
                 if not challenge_yes_or_no(f"No directory for {path} exists. Please make sure the Racenet files are in the correct place. Try again?"):
                     quit("No results have been exported")
             elif Path(f"Output/{club}/{round_number}.csv").is_file():
-                if not challenge_yes_or_no(f"An output for {club} {round_number} already exists. Overwrite?"):
+                if not challenge_yes_or_no(f"An output file for {club} {round_number} already exists. Overwrite?"):
                     quit("No results have been exported")
                 else:
                     looking_for_path = False
@@ -342,9 +342,9 @@ def main():
         for driver in dnf_drivers:
             print(f'-- {driver.name} failed to retire properly! --')
         
-        print("ELO results exported")
+        print("Results have been successfully exported!")
     else:
-        print("No results have been exported")
+        print("No results have been exported!")
 
 if __name__ == "__main__":
     main()
