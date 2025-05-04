@@ -27,6 +27,7 @@ class Round:
         self.club = club
         self.number = number
         self.drivers = {}
+        self.duplicate_drivers = {}
         self.stages = []
         self.overall = None
         self.multiclass_overall = []
@@ -75,12 +76,14 @@ class Round:
                             new_row["name"] = wrc_players[0]
                         else:    
                             new_row["name"] = input(f"Enter the name of the driver in position {new_row['position']} of stage {str(idx+1)}: ")
-                            wrc_players.append(driver.name)
-
-                    driver = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
-
+                            wrc_players.append(new_row["name"].name)
+                    
                     if new_row["name"] not in self.drivers:
-                        self.drivers[new_row["name"]] = driver
+                        self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
+                    elif idx < 2 and new_row["name"] in self.drivers and self.drivers[new_row["name"]].club != new_row["club"]:
+                        if new_row["name"] not in self.duplicate_drivers:
+                            print(f'{new_row["name"]} has participated in two clubs!')
+                            self.duplicate_drivers[new_row["name"]] = new_row["club"]
 
                     temp_file.append(new_row)
 
