@@ -38,9 +38,9 @@ class Round:
         self.wrec_last_day = 0
     
     def remove_duplicate_drivers(self):
-        for driver in self.duplicate_drivers:
+        for duplicate_driver in self.duplicate_drivers:
             while True:
-                incorrect_club = input(f'Which club should {driver} be removed from? ').upper()
+                incorrect_club = input(f'Which club should {duplicate_driver} be removed from? ').upper()
                 if not incorrect_club in valid_clubs[self.club]:
                     print("Invalid club. Try again.")
                 else:
@@ -49,7 +49,7 @@ class Round:
             for stage in self.stages:
                 if stage.club == incorrect_club:
                     for row in stage.result:
-                        if row.get("name") == driver:
+                        if row.get("name") == duplicate_driver:
                             stage.result.remove(row)
                             continue
                     continue
@@ -57,10 +57,15 @@ class Round:
             for stage in self.multiclass_overall:
                 if stage.club == incorrect_club:
                     for row in stage.result:
-                        if row.get("name") == driver:
+                        if row.get("name") == duplicate_driver:
                             stage.result.remove(row)
                             continue
                     continue
+            
+            driver = [driver for driver in self.drivers.values() if driver.name == duplicate_driver][0]
+            if driver.club == incorrect_club:
+                club = [club for club in valid_clubs[self.club] if club != incorrect_club][0]
+                driver.club = club
 
     def import_stages(self, files):
 
@@ -111,7 +116,7 @@ class Round:
                         self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
                     elif idx < 2 and new_row["name"] in self.drivers and self.drivers[new_row["name"]].club != new_row["club"]:
                         if new_row["name"] not in self.duplicate_drivers:
-                            print(f'{new_row["name"]} has participated in two clubs!')
+                            print(f'-- {new_row["name"]} has participated in two clubs! --')
                             self.duplicate_drivers.append(new_row["name"])
 
                     temp_file.append(new_row)
@@ -123,11 +128,6 @@ class Round:
                         self.multiclass_overall.append(Stage(self.number, temp_file, club))
                 else:
                     self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", temp_file, club))
-
-        #TODO: Probably a good place to remove duplicate drivers.
-        if self.club != "WREC":
-            self.remove_duplicate_drivers()
-
 
     def wrc_writerow(self, writer, row, overall_stage):
         position = row["position"] if row["status"] == "" else row["status"]
@@ -209,17 +209,17 @@ class Round:
                 row["status"] = "DNF" if self.drivers[row["name"]].dnf or len(self.drivers[row["name"]].completed_stages) < len(self.stages)*0.75 else ""
                 self.overall.result[pos] = row
 
-            for driver in self.drivers.values():
-                if driver.name not in final_drivers and driver.dnf:
-                    self.overall.result.append({
-                        "position": len(self.overall.result)+1, 
-                        "name": driver.name, 
-                        "car": driver.car, 
-                        "time": "10:00:00", 
-                        "delta": "10:00:00", 
-                        "platform": driver.platform, 
-                        "club": driver.club, 
-                        "status": "DNF"})
+            missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers and driver.dnf]
+            for driver in missing_drivers:
+                self.overall.result.append({
+                    "position": len(self.overall.result)+1, 
+                    "name": driver.name, 
+                    "car": driver.car, 
+                    "time": "10:00:00", 
+                    "delta": "10:00:00", 
+                    "platform": driver.platform, 
+                    "club": driver.club, 
+                    "status": "DNF"})
 
             self.overall.result = sorted(self.overall.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
 
@@ -332,6 +332,7 @@ def main():
 
         round.import_stages(round_files)
         if len(valid_clubs[club]) > 1:
+            round.remove_duplicate_drivers()
             round.merge_stages()
         round.find_dnfs()
         round.calculate_standings()
