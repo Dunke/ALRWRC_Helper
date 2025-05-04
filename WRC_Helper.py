@@ -247,8 +247,8 @@ def main():
         paths = [f"{path}/{round_number}" for path in valid_clubs[club]]
         for path in paths:
             if not Path(path).is_dir():
-                print(f"No directory for {path} exists. Please make sure the Racenet files are in the correct place.")
-                quit("No results have been exported")
+                if not challenge_yes_or_no(f"No directory for {path} exists. Please make sure the Racenet files are in the correct place. Try again?"):
+                    quit("No results have been exported")
             elif Path(f"Output/{club}/{round_number}.csv").is_file():
                 if not challenge_yes_or_no(f"An output for {club} {round_number} already exists. Overwrite?"):
                     quit("No results have been exported")
