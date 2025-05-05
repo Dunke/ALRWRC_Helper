@@ -110,7 +110,7 @@ class Round:
                             new_row["name"] = wrc_players[0]
                         else:    
                             new_row["name"] = input(f"Enter the name of the driver in position {new_row['position']} of stage {str(idx+1)}: ")
-                            wrc_players.append(new_row["name"].name)
+                            wrc_players.append(new_row["name"])
                     
                     if new_row["name"] not in self.drivers:
                         self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
