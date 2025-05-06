@@ -40,7 +40,7 @@ class Round:
     def remove_duplicate_drivers(self):
         for duplicate_driver in self.duplicate_drivers:
             while True:
-                incorrect_club = input(f'Which club should {duplicate_driver} be removed from? ').upper()
+                incorrect_club = input(f'-- {duplicate_driver} has participated in two clubs! Which club should they be removed from? ').upper()
                 if not incorrect_club in valid_clubs[self.club]:
                     print("Invalid club. Try again.")
                 else:
@@ -68,7 +68,6 @@ class Round:
                 driver.club = club
 
     def import_stages(self, files):
-
         wrc_players = []
 
         for club in files:
@@ -116,7 +115,6 @@ class Round:
                         self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
                     elif idx < 2 and new_row["name"] in self.drivers and self.drivers[new_row["name"]].club != new_row["club"]:
                         if new_row["name"] not in self.duplicate_drivers:
-                            print(f'-- {new_row["name"]} has participated in two clubs! --')
                             self.duplicate_drivers.append(new_row["name"])
 
                     temp_file.append(new_row)
@@ -160,7 +158,6 @@ class Round:
                 self.wrc_writerow(writer, row, True)
 
     def find_dnfs(self):
-
         for idx, stage in enumerate(self.stages):
 
             nominal_times = ["00:08:00", "00:16:00", "00:25:00", "00:35:00"]
@@ -224,7 +221,6 @@ class Round:
             self.overall.result = sorted(self.overall.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
 
     def merge_stages(self):
-        
         temp_stages = {}
         wrc1_stages = self.stages[:len(self.stages)//2]
         wrc2_stages = self.stages[len(self.stages)//2:]
