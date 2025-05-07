@@ -14,8 +14,8 @@ class Driver:
         self.platform = platform
         self.club = club
         self.completed_stages = []
-        self.dnq = False
-        self.dnf = False
+        self.did_not_finish = False # For drivers who completed less than 6 stages in WRC1/2 or retired correctly
+        self.did_not_retire = False # For drivers who did not retire correctly and are missing from the results
 
     def __eq__(self, other):
         return self.name == other.name
@@ -168,9 +168,9 @@ class Round:
                 driver = self.drivers[row["name"]]
 
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < len(self.stages)*0.75:
-                    driver.dnq = True
+                    driver.did_not_finish = True
 
-                if driver.dnq and self.club != "WREC":
+                if driver.did_not_finish and self.club != "WREC":
                     row["status"] = "DNF"  
                 elif row["time"] in nominal_times:
                     row["status"] = "DNF" if self.club == "WREC" else "RET"
@@ -193,7 +193,7 @@ class Round:
                     "club": driver.club, 
                     "status": "DNF"})
                 if idx == len(self.stages)-1:
-                    driver.dnf = True
+                    driver.did_not_retire = True
 
             stage.result = sorted(stage.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             self.stages[idx] = stage
@@ -203,10 +203,10 @@ class Round:
             final_drivers = []
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row["name"])
-                row["status"] = "DNF" if self.drivers[row["name"]].dnf or len(self.drivers[row["name"]].completed_stages) < len(self.stages)*0.75 else ""
+                row["status"] = "DNF" if self.drivers[row["name"]].did_not_retire or len(self.drivers[row["name"]].completed_stages) < len(self.stages)*0.75 else ""
                 self.overall.result[pos] = row
 
-            missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers and driver.dnf]
+            missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers and driver.did_not_retire]
             for driver in missing_drivers:
                 self.overall.result.append({
                     "position": len(self.overall.result)+1, 
@@ -334,7 +334,7 @@ def main():
         round.calculate_standings()
         round.export_results()
         
-        dnf_drivers = [driver for driver in round.drivers.values() if driver.dnf]
+        dnf_drivers = [driver for driver in round.drivers.values() if driver.did_not_retire]
         for driver in dnf_drivers:
             print(f'-- {driver.name} failed to retire properly! --')
         
