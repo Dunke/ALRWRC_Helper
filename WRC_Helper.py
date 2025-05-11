@@ -8,10 +8,10 @@ club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
 valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
 
 class Driver:
-    def __init__(self, name, car, platform, club):
+    def __init__(self, name, car, club):
         self.name = name
         self.car = car
-        self.platform = platform
+        self.platform = None
         self.club = club
         self.completed_stages = []
         self.dnq = False
@@ -36,36 +36,13 @@ class Round:
         self.overall = None
         self.multiclass_overall = []
         self.wrec_last_day = 0
-    
-    def remove_duplicate_drivers(self):
-        for duplicate_driver in self.duplicate_drivers:
-            while True:
-                incorrect_club = input(f'-- {duplicate_driver} has participated in two clubs! Which club should they be removed from? ').upper()
-                if not incorrect_club in valid_clubs[self.club]:
-                    print("Invalid club. Try again.")
-                else:
-                    break
-   
-            for stage in self.stages:
-                if stage.club == incorrect_club:
-                    for row in stage.result:
-                        if row.get("name") == duplicate_driver:
-                            stage.result.remove(row)
-                            continue
-                    continue
 
-            for stage in self.multiclass_overall:
-                if stage.club == incorrect_club:
-                    for row in stage.result:
-                        if row.get("name") == duplicate_driver:
-                            stage.result.remove(row)
-                            continue
-                    continue
-            
-            driver = [driver for driver in self.drivers.values() if driver.name == duplicate_driver][0]
-            if driver.club == incorrect_club:
-                club = [club for club in valid_clubs[self.club] if club != incorrect_club][0]
-                driver.club = club
+    def import_drivers(self):
+        file = f'WRC Drivers/Drivers {self.number}.csv'
+        with open(file, newline='') as f:
+            for row in list(csv.reader(f)):
+                if row[0] not in self.drivers:
+                    self.drivers[row[0]] = Driver(row[0], row[2], row[1])
 
     def import_stages(self, files):
         wrc_players = []
@@ -73,51 +50,53 @@ class Round:
         for club in files:
             for idx, file in enumerate(files[club]):
 
-                with open(file, newline='') as f:
-                    next(f)
-                    stage_file = list(csv.reader(f))
-
-                #EXAMPLE IN/OUT ROWS:
-                #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '', '']            
-                #{"position": "1", "name": "Slokksi", "car": "Volkswagen Polo 2017", "time": "00:04:23.2610000", "penalty": "00:00:00", "delta": "00:00:00", "platform": "XBOX", "club": "", "status": ""}
-
                 temp_file = []
-                for idy, row in enumerate(stage_file):
+                with open(file, newline='') as f:
+                    #EXAMPLE IN/OUT ROWS:
+                    #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '', '']            
+                    #{"position": "1", "name": "Slokksi", "car": "Volkswagen Polo 2017", "time": "00:04:23.2610000", "penalty": "00:00:00", "delta": "00:00:00", "platform": "XBOX", "club": "", "status": ""}
+                    next(f)
+                    for idy, row in enumerate(list(csv.reader(f))):
 
-                    if idx == len(files[club]) -1:
-                        new_row = {"position": row[0], 
-                                "name": row[1], 
-                                "car": row[2], 
-                                "time": row[3], 
-                                "delta": row[4], 
-                                "platform": row[5], 
-                                "club": club, 
-                                "status": ""}
-                    else:
-                        new_row = {"position": row[0], 
-                                "name": row[1], 
-                                "car": row[2], 
-                                "time": row[3], 
-                                "penalty": row[4], 
-                                "delta": row[5], 
-                                "platform": row[6], 
-                                "club": club, 
-                                "status": ""}
+                        if idx == len(files[club]) -1:
+                            new_row = {"position": row[0], 
+                                    "name": row[1], 
+                                    "car": row[2], 
+                                    "time": row[3], 
+                                    "delta": row[4], 
+                                    "platform": row[5], 
+                                    "club": club, 
+                                    "status": ""}
+                        else:
+                            new_row = {"position": row[0], 
+                                    "name": row[1], 
+                                    "car": row[2], 
+                                    "time": row[3], 
+                                    "penalty": row[4], 
+                                    "delta": row[5], 
+                                    "platform": row[6], 
+                                    "club": club, 
+                                    "status": ""}
 
-                    if new_row["name"] == "WRC Player":
-                        if idy != 0 and len(wrc_players) == 1:
-                            new_row["name"] = wrc_players[0]
-                        else:    
-                            new_row["name"] = input(f"Enter the name of the driver in position {new_row['position']} of stage {str(idx+1)}: ")
-                            wrc_players.append(new_row["name"])
-                    
-                    if new_row["name"] not in self.drivers:
-                        self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["platform"], new_row["club"])
-                    elif idx < 2 and new_row["name"] in self.drivers and self.drivers[new_row["name"]].club != new_row["club"]:
-                        if new_row["name"] not in self.duplicate_drivers:
-                            self.duplicate_drivers.append(new_row["name"])
+                        if new_row["name"] == "WRC Player":
+                            if idy != 0 and len(wrc_players) == 1:
+                                new_row["name"] = wrc_players[0]
+                            else:    
+                                new_row["name"] = input(f"Enter the name of the driver in position {new_row['position']} of stage {str(idx+1)}: ")
+                                wrc_players.append(new_row["name"])
+                        
+                        if new_row["name"] not in self.drivers:
+                            if self.club == "WREC":
+                                self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["club"])
+                            else:
+                                self.drivers[new_row["name"]] = Driver(new_row["name"], None, None)
 
-                    temp_file.append(new_row)
+                        if idx < 2 and self.drivers[new_row["name"]].club != new_row["club"]:
+                            if new_row["name"] not in self.duplicate_drivers:
+                                print(f'Added {new_row["name"]} as duplicate')
+                                self.duplicate_drivers.append(new_row["name"])
+
+                        temp_file.append(new_row)
 
                 if idx == len(files[club]) -1:
                     if len(files) == 1:
@@ -126,6 +105,27 @@ class Round:
                         self.multiclass_overall.append(Stage(self.number, temp_file, club))
                 else:
                     self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", temp_file, club))
+    
+    def remove_duplicate_drivers(self):
+        for duplicate_driver in self.duplicate_drivers:
+            for stage in self.stages:
+                if stage.club != self.drivers[duplicate_driver].club or self.drivers[duplicate_driver].club == None:
+                    for row in stage.result:
+                        if row.get("name") == duplicate_driver:
+                            stage.result.remove(row)
+                            continue
+                    continue
+
+            for stage in self.multiclass_overall:
+                if stage.club != self.drivers[duplicate_driver].club or self.drivers[duplicate_driver].club == None:
+                    for row in stage.result:
+                        if row.get("name") == duplicate_driver:
+                            stage.result.remove(row)
+                            continue
+                    continue
+            
+            if self.drivers[duplicate_driver].club == None:
+                self.drivers.pop(duplicate_driver)
 
     def wrc_writerow(self, writer, row, overall_stage):
         position = row["position"] if row["status"] == "" else row["status"]
@@ -326,10 +326,14 @@ def main():
                     if not challenge_yes_or_no(f'You must enter a number less than {len(round_files["WREC"]) -1}. Try again?'):
                         quit("No results have been exported")
 
-        round.import_stages(round_files)
         if len(valid_clubs[club]) > 1:
+            round.import_drivers()
+            round.import_stages(round_files)
             round.remove_duplicate_drivers()
             round.merge_stages()
+        else:
+            round.import_stages(round_files)
+
         round.find_dnfs()
         round.calculate_standings()
         round.export_results()
