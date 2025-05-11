@@ -93,7 +93,6 @@ class Round:
 
                         if idx < 2 and self.drivers[new_row["name"]].club != new_row["club"]:
                             if new_row["name"] not in self.duplicate_drivers:
-                                print(f'Added {new_row["name"]} as duplicate')
                                 self.duplicate_drivers.append(new_row["name"])
 
                         temp_file.append(new_row)
@@ -126,6 +125,7 @@ class Round:
             
             if self.drivers[duplicate_driver].club == None:
                 self.drivers.pop(duplicate_driver)
+                print(f'-- {duplicate_driver} has not signed up and has been removed! --')
 
     def wrc_writerow(self, writer, row, overall_stage):
         position = row["position"] if row["status"] == "" else row["status"]
