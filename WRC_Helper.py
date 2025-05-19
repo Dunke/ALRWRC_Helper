@@ -1,6 +1,7 @@
 import csv
 import glob
 from itertools import zip_longest, chain
+import math
 from pathlib import Path
 import re
 
@@ -157,6 +158,12 @@ class Round:
             for row in self.overall.result:
                 self.wrc_writerow(writer, row, True)
 
+    def get_round_cutoff(self):
+        if self.club == "WREC":
+            return math.ceil(len(self.stages)*0.67)
+        else:
+            return math.floor(len(self.stages)*0.67)
+
     def find_dnfs(self):
         for idx, stage in enumerate(self.stages):
 
@@ -167,7 +174,7 @@ class Round:
 
                 driver = self.drivers[row["name"]]
 
-                if idx >= len(self.stages)-1 and len(driver.completed_stages) < len(self.stages)*0.75:
+                if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
 
                 if driver.did_not_finish and self.club != "WREC":
@@ -203,7 +210,7 @@ class Round:
             final_drivers = []
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row["name"])
-                row["status"] = "DNF" if self.drivers[row["name"]].did_not_retire or len(self.drivers[row["name"]].completed_stages) < len(self.stages)*0.75 else ""
+                row["status"] = "DNF" if self.drivers[row["name"]].did_not_retire or len(self.drivers[row["name"]].completed_stages) < self.get_round_cutoff() else ""
                 self.overall.result[pos] = row
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers and driver.did_not_retire]
