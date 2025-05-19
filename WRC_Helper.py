@@ -133,10 +133,12 @@ class Round:
         
         if self.club == "WREC":
             if overall_stage:
+                last_day_length = len(self.stages) - self.wrec_last_day
+                last_day_cutoff = len(self.drivers[row["name"]].completed_stages) - last_day_length
                 first_days_stages = [stage for stage in self.drivers[row["name"]].completed_stages[:self.wrec_last_day]]
-                last_day_stages = [stage for stage in self.drivers[row["name"]].completed_stages[self.wrec_last_day:]]
-                survived_first_days = "YES" if first_days_stages and first_days_stages[-1].split(" ")[-1] == f'S{self.wrec_last_day}' else "NO"
-                survived_last_day = "YES" if last_day_stages and last_day_stages[-1].split(" ")[-1] == f'S{len(self.stages)}' else "NO"
+                last_day_stages = [stage for stage in self.drivers[row["name"]].completed_stages[last_day_cutoff:]]
+                survived_first_days = "YES" if first_days_stages[-1].split(" ")[-1] == f'S{self.wrec_last_day}' else "NO"
+                survived_last_day = "YES" if len(last_day_stages) == last_day_length and last_day_stages[0].split(" ")[-1] == f'S{self.wrec_last_day+1}' else "NO"
 
                 writer.writerow(["", position, row["name"], row["car"], "", survived_first_days, survived_last_day])
             else:
