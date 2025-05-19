@@ -329,7 +329,7 @@ def main():
                         if not challenge_yes_or_no(f'{wrec_last_day} must be less than {len(round_files["WREC"]) -1}. Try again?'):
                             quit("No results have been exported")
                     else:
-                        round.wrec_last_day = wrec_last_day
+                        round.wrec_last_day = wrec_last_day -1
                         break
                 except:
                     if not challenge_yes_or_no(f'You must enter a number less than {len(round_files["WREC"]) -1}. Try again?'):
