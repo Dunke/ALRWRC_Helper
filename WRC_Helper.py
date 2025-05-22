@@ -305,8 +305,8 @@ def main():
         quit("No files were found")
     else:
         for club_file in round_files:
-            stage_pattern = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
-            overall_pattern = r"^((WRC[12]|WREC)\/S[\d] R[\d][\\\/])wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
+            stage_pattern = r"^((WRC[12]|WREC)\/S\d{1,2} R\d{1,2}[\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
+            overall_pattern = r"^((WRC[12]|WREC)\/S\d{1,2} R\d{1,2}[\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
             stage_count = 0
             overall_count = 0
             for path in round_files[club_file]:
