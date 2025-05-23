@@ -1,12 +1,13 @@
 import csv
 import glob
-from itertools import zip_longest, chain
 import math
-from pathlib import Path
 import re
+from datetime import datetime, timedelta
+from itertools import zip_longest, chain
+from pathlib import Path
 
 club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
-valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
+valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"], "WRC1": ["WRC1"]}
 
 class Driver:
     def __init__(self, name, car, club):
@@ -15,6 +16,7 @@ class Driver:
         self.platform = None
         self.club = club
         self.completed_stages = []
+        self.total_time = "00:00:00.0000000"
         self.did_not_finish = False # For drivers who completed less than 6 stages in WRC1/2 or retired correctly
         self.did_not_retire = False # For drivers who did not retire correctly and are missing from the results
 
@@ -128,8 +130,8 @@ class Round:
                 self.drivers.pop(duplicate_driver)
                 print(f'-- {duplicate_driver} has not signed up and has been removed! --')
 
-    def wrc_writerow(self, writer, row, overall_stage):
-        position = row["position"] if row["status"] == "" else row["status"]
+    def wrc_writerow(self, writer, row, index, overall_stage):
+        position = index +1 if row["status"] == "" else row["status"]
         
         if self.club == "WREC":
             if overall_stage:
@@ -153,12 +155,12 @@ class Round:
             writer = csv.writer(csvfile)
             for stage in self.stages:
                 writer.writerow([stage.number])
-                for row in stage.result:
-                    self.wrc_writerow(writer, row, False)
+                for idx, row in enumerate(stage.result):
+                    self.wrc_writerow(writer, row, idx, False)
                 
             writer.writerow([self.overall.number])
-            for row in self.overall.result:
-                self.wrc_writerow(writer, row, True)
+            for idx, row in enumerate(self.overall.result):
+                self.wrc_writerow(writer, row, idx, True)
 
     def get_round_cutoff(self):
         if self.club == "WREC":
@@ -166,11 +168,25 @@ class Round:
         else:
             return math.floor(len(self.stages)*0.67)
 
+    def sum_stage_times(self, total_time_string, stage_time_string):
+        total_time_string = total_time_string[:-1] if len(total_time_string) > 8 else total_time_string
+        stage_time_string = stage_time_string[:-1] if len(stage_time_string) > 8 else stage_time_string
+        
+        new_total_time = timedelta()
+        for time in [total_time_string, stage_time_string]:
+            stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
+            stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
+
+            new_total_time += timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3]))
+        return f'0{str(new_total_time)}'
+
     def find_dnfs(self):
         for idx, stage in enumerate(self.stages):
 
             nominal_times = ["00:08:00", "00:16:00", "00:25:00", "00:35:00"]
             current_stage_drivers = []
+            current_nominal_time = None
+            current_nominal_delta = None
 
             for pos, row in enumerate(stage.result):
 
@@ -181,9 +197,14 @@ class Round:
 
                 if row["time"] in nominal_times or (driver.did_not_finish and self.club != "WREC"):
                     row["status"] = "DNF"
+                    if row["time"] in nominal_times and current_nominal_time == None:
+                        current_nominal_time = row["time"]
+                        current_nominal_delta = row["delta"]
                 else:
                     driver.completed_stages.append(stage.number)
                 
+                driver.total_time = self.sum_stage_times(driver.total_time, row["time"])
+
                 current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
 
@@ -193,12 +214,13 @@ class Round:
                     "position": len(stage.result)+1, 
                     "name": driver.name, 
                     "car": driver.car, 
-                    "time": "10:00:00", 
-                    "penalty": "10:00:00", 
-                    "delta": "10:00:00", 
+                    "time": current_nominal_time, 
+                    "penalty": current_nominal_time, 
+                    "delta": current_nominal_delta, 
                     "platform": driver.platform, 
                     "club": driver.club, 
                     "status": "DNF"})
+                driver.total_time = self.sum_stage_times(driver.total_time, current_nominal_time)
                 if idx == len(self.stages)-1:
                     driver.did_not_retire = True
 
@@ -210,22 +232,24 @@ class Round:
             final_drivers = []
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row["name"])
-                row["status"] = "DNF" if self.drivers[row["name"]].did_not_retire or len(self.drivers[row["name"]].completed_stages) < self.get_round_cutoff() else ""
+                row["status"] = "DNF" if len(self.drivers[row["name"]].completed_stages) < self.get_round_cutoff() else ""
                 self.overall.result[pos] = row
 
-            missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers and driver.did_not_retire]
+            missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers]
             for driver in missing_drivers:
+                status = "DNF" if len(driver.completed_stages) < self.get_round_cutoff() else ""
                 self.overall.result.append({
                     "position": len(self.overall.result)+1, 
                     "name": driver.name, 
                     "car": driver.car, 
-                    "time": "10:00:00", 
+                    "time": driver.total_time, 
                     "delta": "10:00:00", 
                     "platform": driver.platform, 
                     "club": driver.club, 
-                    "status": "DNF"})
+                    "status": status})
 
             self.overall.result = sorted(self.overall.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
+            self.overall.result = sorted(self.overall.result, key=lambda x: x["time"])
 
     def merge_stages(self):
         temp_stages = {}
