@@ -179,10 +179,8 @@ class Round:
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
 
-                if driver.did_not_finish and self.club != "WREC":
-                    row["status"] = "DNF"  
-                elif row["time"] in nominal_times:
-                    row["status"] = "DNF" if self.club == "WREC" else "RET"
+                if row["time"] in nominal_times or (driver.did_not_finish and self.club != "WREC"):
+                    row["status"] = "DNF"
                 else:
                     driver.completed_stages.append(stage.number)
                 
