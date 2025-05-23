@@ -7,7 +7,7 @@ from itertools import zip_longest, chain
 from pathlib import Path
 
 club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
-valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"], "WRC1": ["WRC1"]}
+valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
 
 class Driver:
     def __init__(self, name, car, club):
@@ -187,6 +187,7 @@ class Round:
             current_stage_drivers = []
             current_nominal_time = None
             current_nominal_delta = None
+            stage_times = []
 
             for pos, row in enumerate(stage.result):
 
@@ -205,8 +206,28 @@ class Round:
                 
                 driver.total_time = self.sum_stage_times(driver.total_time, row["time"])
 
+                if row["time"] not in nominal_times:
+                    stage_times.append(timedelta(
+                        hours=int(row["time"].split(":")[0]), 
+                        minutes=int(row["time"].split(":")[1]), 
+                        seconds=int(row["time"].split(":")[2].split(".")[0])))
+
                 current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
+
+            average_time = sum(stage_times, timedelta()) / len(stage_times)
+            # print(average_time)
+            if current_nominal_time == None:
+                for time in nominal_times:
+                    cutoff = timedelta(minutes=4)
+                    delta = timedelta(minutes=int(time.split(":")[1])) - average_time
+                    if delta > cutoff:
+                        test_nominal = time
+                        break
+            
+            # print(f'{stage.number} nominal time is: {test_nominal} -- {delta}')
+            # print(f'Actual nominal time is: {current_nominal_time}')
+            # print("")
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in current_stage_drivers]
             for driver in missing_drivers:
@@ -237,7 +258,6 @@ class Round:
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers]
             for driver in missing_drivers:
-                status = "DNF" if len(driver.completed_stages) < self.get_round_cutoff() else ""
                 self.overall.result.append({
                     "position": len(self.overall.result)+1, 
                     "name": driver.name, 
@@ -246,7 +266,7 @@ class Round:
                     "delta": "10:00:00", 
                     "platform": driver.platform, 
                     "club": driver.club, 
-                    "status": status})
+                    "status": "DNF" if len(driver.completed_stages) < self.get_round_cutoff() else ""})
 
             self.overall.result = sorted(self.overall.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             self.overall.result = sorted(self.overall.result, key=lambda x: x["time"])
