@@ -28,6 +28,7 @@ class Stage:
         self.number = number
         self.result = result
         self.club = club
+        self.fastest_time = "00:00:00.0000000"
 
 class Round:
     def __init__(self, club, number):
@@ -39,6 +40,7 @@ class Round:
         self.overall = None
         self.multiclass_overall = []
         self.wrec_last_day = 0
+        self.winner_time = "00:00:00.0000000"
 
     def import_drivers(self):
         file = f'WRC Drivers/Drivers {self.number}.csv'
@@ -179,6 +181,20 @@ class Round:
 
             new_total_time += timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3]))
         return f'0{str(new_total_time)}'
+    
+    def get_gap_to_leader(self, leader_time, driver_time):
+        leader_time = leader_time[:-1] if len(leader_time) > 8 else leader_time
+        driver_time = driver_time[:-1] if len(driver_time) > 8 else driver_time
+        
+        times = []
+        for time in [leader_time, driver_time]:
+            stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
+            stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
+
+            times.append(timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3])))
+        
+        gap_to_leader = times[1] - times[0]
+        return f'0{str(gap_to_leader)}'
 
     def find_dnfs(self):
         for idx, stage in enumerate(self.stages):
@@ -192,6 +208,7 @@ class Round:
             for pos, row in enumerate(stage.result):
 
                 driver = self.drivers[row["name"]]
+                stage.fastest_time = row["time"] if pos == 0 else stage.fastest_time
 
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
@@ -215,21 +232,30 @@ class Round:
                 current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
 
-            average_time = sum(stage_times, timedelta()) / len(stage_times)
+            missing_drivers = [driver for driver in self.drivers.values() if driver.name not in current_stage_drivers]
             # print(average_time)
-            if current_nominal_time == None:
+            if current_nominal_time == None and missing_drivers:
+                average_time = sum(stage_times, timedelta()) / len(stage_times)
                 for time in nominal_times:
                     cutoff = timedelta(minutes=4)
                     delta = timedelta(minutes=int(time.split(":")[1])) - average_time
                     if delta > cutoff:
-                        test_nominal = time
+                        while True:
+                            print(f'Fastest time on stage {stage.number} is {stage.fastest_time}')
+                            if not challenge_yes_or_no(f'No nominal time found. Do you want to set {time} as nominal time for stage {stage.number}?'):
+                                while True:
+                                    nominal_time_choice = input("Select a new nominal time, or quit. [1 = 08min / 2 = 16min / 3 = 25min / 4 = 35min / q = quit] ").lower()
+                                    if int(nominal_time_choice) in range(1,5):
+                                        current_nominal_time = nominal_times[int(nominal_time_choice)-1]
+                                        break
+                                    elif nominal_time_choice == "q":
+                                        quit("No results have been exported")
+                                break      
+                            else:
+                                current_nominal_time = time
+                                break
                         break
-            
-            # print(f'{stage.number} nominal time is: {test_nominal} -- {delta}')
-            # print(f'Actual nominal time is: {current_nominal_time}')
-            # print("")
 
-            missing_drivers = [driver for driver in self.drivers.values() if driver.name not in current_stage_drivers]
             for driver in missing_drivers:
                 stage.result.append({
                     "position": len(stage.result)+1, 
@@ -254,6 +280,7 @@ class Round:
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row["name"])
                 row["status"] = "DNF" if len(self.drivers[row["name"]].completed_stages) < self.get_round_cutoff() else ""
+                self.winner_time = self.sum_stage_times(self.winner_time, row["time"]) if pos == 0 else self.winner_time
                 self.overall.result[pos] = row
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers]
@@ -263,7 +290,7 @@ class Round:
                     "name": driver.name, 
                     "car": driver.car, 
                     "time": driver.total_time, 
-                    "delta": "10:00:00", 
+                    "delta": self.get_gap_to_leader(self.winner_time, driver.total_time), 
                     "platform": driver.platform, 
                     "club": driver.club, 
                     "status": "DNF" if len(driver.completed_stages) < self.get_round_cutoff() else ""})
