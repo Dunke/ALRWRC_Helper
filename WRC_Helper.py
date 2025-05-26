@@ -82,7 +82,7 @@ class Round:
                                     "status": ""}
 
                         if new_row["name"] == "WRC Player":
-                            if idy != 0 and len(wrc_players) == 1:
+                            if idx != 0 and len(wrc_players) == 1:
                                 new_row["name"] = wrc_players[0]
                             else:    
                                 new_row["name"] = input(f"Enter the name of the driver in position {new_row['position']} of stage {str(idx+1)}: ")
@@ -325,7 +325,7 @@ def main():
         paths = [f"{path}/{round_number}" for path in valid_clubs[club]]
         for path in paths:
             if not Path(path).is_dir():
-                if not challenge_yes_or_no(f"No directory for {path} exists. Please make sure the Racenet files are in the correct place. Try again?"):
+                if not challenge_yes_or_no(f"No directory for {path} exists. Make sure the Racenet files are in the correct location. Try again?"):
                     quit("No results have been exported")
             elif Path(f"Output/{club}/{round_number}.csv").is_file():
                 if not challenge_yes_or_no(f"An output file for {club} {round_number} already exists. Overwrite?"):
