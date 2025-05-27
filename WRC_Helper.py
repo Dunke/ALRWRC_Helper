@@ -355,8 +355,8 @@ def main():
         round_number = input("Enter the season and round as 'S# R#': ").upper()
         paths = [f"{path}/{round_number}" for path in valid_clubs[club]]
         for path in paths:
-            if not Path(path).is_dir():
-                if not challenge_yes_or_no(f"No directory for {path} exists. Make sure the Racenet files are in the correct location. Try again?"):
+            if not Path(path).is_dir() or not any(Path(path).iterdir()):
+                if not challenge_yes_or_no(f"The directory for {path} does not exist or is empty. Make sure the Racenet files are in the correct location. Try again?"):
                     quit("No results have been exported")
             elif Path(f"Output/{club}/{round_number}.csv").is_file():
                 if not challenge_yes_or_no(f"An output file for {club} {round_number} already exists. Overwrite?"):
@@ -403,9 +403,8 @@ def main():
                     else:
                         alr_round.wrec_last_day = wrec_last_day - 1
                         break
-                except:
-                    if not challenge_yes_or_no(f'You must enter a number less than {len(round_files["WREC"]) -1}. Try again?'):
-                        quit("No results have been exported")
+                except ValueError:
+                    print(f'You must enter a number less than {len(round_files["WREC"]) -1}.')
 
         if len(valid_clubs[club]) > 1:
             alr_round.import_drivers()
