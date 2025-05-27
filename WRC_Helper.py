@@ -8,6 +8,8 @@ from pathlib import Path
 
 club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
 valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
+no_export_string = "No results have been exported"
+initial_time = " 00:00:00.0000000"
 
 class Driver:
     def __init__(self, name, car, club):
@@ -16,7 +18,7 @@ class Driver:
         self.platform = None
         self.club = club
         self.completed_stages = []
-        self.total_time = "00:00:00.0000000"
+        self.total_time = initial_time
         self.did_not_finish = False # For drivers who completed less than 6 stages in WRC1/2 or retired correctly
         self.did_not_retire = False # For drivers who did not retire correctly and are missing from the results
 
@@ -28,14 +30,14 @@ class Stage:
         self.number = number
         self.result = result
         self.club = club
-        self.fastest_time = "00:00:00.0000000"
+        self.fastest_time = initial_time
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
     valid = {"y": True, "yes": True, "n": False, "no": False}
 
     while True:
-        choice = input(f"{question} [y/n] ").lower()
+        choice = input(f'{question} [y/n] ').lower()
         if choice in valid:
             return valid[choice]
         else:
@@ -77,14 +79,21 @@ class Round:
         self.overall = None
         self.multiclass_overall = []
         self.wrec_last_day = 0
-        self.winner_time = "00:00:00.0000000"
+        self.winner_time = initial_time
 
     def import_drivers(self):
-        file = f'WRC Drivers/Drivers {self.number}.csv'
-        with open(file, newline='') as f:
-            for row in list(csv.reader(f)):
-                if row[0] not in self.drivers:
-                    self.drivers[row[0]] = Driver(row[0], row[2], row[1])
+        file = f'WRC Drivers/Drivers {self.number.rsplit(" ", 1)[0]}.csv'
+        while True:
+            if Path(file).is_file():
+                with open(file, newline='') as f:
+                    for row in list(csv.reader(f)):
+                        if row[0] not in self.drivers:
+                            self.drivers[row[0]] = Driver(row[0], row[2], row[1])
+                break
+            else:
+                if not challenge_yes_or_no(f'The file {file} does not exist. Make sure the list of drivers is in the correct location. Try again?'):
+                    quit(no_export_string)
+                    pass
 
     def import_stages(self, files):
         wrc_players = []
@@ -124,7 +133,7 @@ class Round:
                             if idx != 0 and len(wrc_players) == 1:
                                 new_row["name"] = wrc_players[0]
                             else:    
-                                new_row["name"] = input(f"Enter the name of the driver in position {new_row['position']} of stage {str(idx+1)}: ")
+                                new_row["name"] = input(f'Enter the name of the driver in position {new_row["position"]} of stage {str(idx+1)}: ')
                                 wrc_players.append(new_row["name"])
                         
                         if new_row["name"] not in self.drivers:
@@ -145,7 +154,7 @@ class Round:
                     else:
                         self.multiclass_overall.append(Stage(self.number, temp_file, club))
                 else:
-                    self.stages.append(Stage(f"{self.number} S{str(idx + 1)}", temp_file, club))
+                    self.stages.append(Stage(f'{self.number} S{str(idx + 1)}', temp_file, club))
     
     def remove_duplicate_drivers(self):
         for duplicate_driver in self.duplicate_drivers:
@@ -189,7 +198,7 @@ class Round:
             writer.writerow(["", position, row["name"], row["club"]])
 
     def export_results(self):
-        file = "Output/" + f"{self.club}/{self.number}" + ".csv"
+        file = f'Output/{self.club}/{self.number}.csv'
 
         with open(file, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
@@ -261,7 +270,7 @@ class Round:
                                         current_nominal_time = nominal_times[int(nominal_time_choice)-1]
                                         break
                                     elif nominal_time_choice == "q":
-                                        quit("No results have been exported")
+                                        quit(no_export_string)
                                 break      
                             else:
                                 current_nominal_time = time
@@ -339,28 +348,28 @@ def main():
 
     for category in club_folders: #Create the folder structure if it doesn't exist
         for folder in club_folders[category]:
-            folder = folder if category == "Input" else f"{category}/{folder}"
+            folder = folder if category == "Input" else f'{category}/{folder}'
             Path(folder).mkdir(parents=True, exist_ok=True)
     
     while True:
         club = input("Enter the name of the club (WRC / WREC): ").upper()
         if club not in valid_clubs:
-            if not challenge_yes_or_no(f"{club} is not a valid club. Try again?"):
-                quit("No results have been exported")
+            if not challenge_yes_or_no(f'{club} is not a valid club. Try again?'):
+                quit(no_export_string)
         else:
             break
     
     looking_for_path = True
     while looking_for_path:
         round_number = input("Enter the season and round as 'S# R#': ").upper()
-        paths = [f"{path}/{round_number}" for path in valid_clubs[club]]
+        paths = [f'{path}/{round_number}' for path in valid_clubs[club]]
         for path in paths:
             if not Path(path).is_dir() or not any(Path(path).iterdir()):
-                if not challenge_yes_or_no(f"The directory for {path} does not exist or is empty. Make sure the Racenet files are in the correct location. Try again?"):
-                    quit("No results have been exported")
-            elif Path(f"Output/{club}/{round_number}.csv").is_file():
-                if not challenge_yes_or_no(f"An output file for {club} {round_number} already exists. Overwrite?"):
-                    quit("No results have been exported")
+                if not challenge_yes_or_no(f'The directory for {path} does not exist or is empty. Make sure the Racenet files are in the correct location. Try again?'):
+                    quit(no_export_string)
+            elif Path(f'Output/{club}/{round_number}.csv').is_file():
+                if not challenge_yes_or_no(f'An output file for {club} {round_number} already exists. Overwrite?'):
+                    quit(no_export_string)
                 else:
                     looking_for_path = False
                     break
@@ -369,7 +378,7 @@ def main():
 
     round_files = {}
     for path in paths:
-        temp = (glob.glob(f"{path}/*.csv"))
+        temp = (glob.glob(f'{path}/*.csv'))
         temp = sorted(temp, key= lambda x: re.split(r"[/\\]", x)[-1])
         temp = sorted(temp, key=len)
         round_files[path.split("/")[0]] = temp
@@ -387,8 +396,8 @@ def main():
                     stage_count += 1
                 elif re.match(overall_pattern, path):
                     overall_count += 1
-            print(f"Found {stage_count} stage file(s) in {club_file}.")
-            print(f"Found {overall_count} overall file(s) in {club_file}.")
+            print(f'Found {stage_count} stage file(s) in {club_file}.')
+            print(f'Found {overall_count} overall file(s) in {club_file}.')
 
     if challenge_yes_or_no():
         alr_round = Round(club, round_number)
@@ -399,7 +408,7 @@ def main():
                     wrec_last_day = int(input("Enter the stage number for the first stage of Day 4: "))
                     if int(wrec_last_day) > len(round_files["WREC"]) -1:
                         if not challenge_yes_or_no(f'{wrec_last_day} must be less than {len(round_files["WREC"]) -1}. Try again?'):
-                            quit("No results have been exported")
+                            quit(no_export_string)
                     else:
                         alr_round.wrec_last_day = wrec_last_day - 1
                         break
