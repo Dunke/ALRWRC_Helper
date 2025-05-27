@@ -31,6 +31,7 @@ class Stage:
         self.result = result
         self.club = club
         self.fastest_time = initial_time
+        self.slowest_time = initial_time
 
 def challenge_yes_or_no(question="Continue?"):
     # Inspired by https://stackoverflow.com/a/3041990
@@ -166,14 +167,6 @@ class Round:
                                 stage.result.remove(row)
                                 continue
                         continue
-
-            # for stage in self.multiclass_overall:
-            #     if stage.club != self.drivers[duplicate_driver].club or self.drivers[duplicate_driver].club is None:
-            #         for row in stage.result:
-            #             if row.get("name") == duplicate_driver:
-            #                 stage.result.remove(row)
-            #                 continue
-            #         continue
             
             if self.drivers[duplicate_driver].club is None:
                 self.drivers.pop(duplicate_driver)
@@ -230,6 +223,7 @@ class Round:
 
                 driver = self.drivers[row["name"]]
                 stage.fastest_time = row["time"] if pos == 0 else stage.fastest_time
+                stage.slowest_time = row["time"] if pos == len(stage.result) -1 else stage.slowest_time
 
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
@@ -262,7 +256,7 @@ class Round:
                     delta = timedelta(minutes=int(time.split(":")[1])) - average_time
                     if delta > cutoff:
                         while True:
-                            print(f'Fastest time on stage {stage.number} is {stage.fastest_time}')
+                            print(f'Slowest time on stage {stage.number} is {stage.slowest_time}')
                             if not challenge_yes_or_no(f'No nominal time found. Do you want to set {time} as nominal time for stage {stage.number}?'):
                                 while True:
                                     nominal_time_choice = input("Select a new nominal time, or quit. [1 = 08min / 2 = 16min / 3 = 25min / 4 = 35min / q = quit] ").lower()
