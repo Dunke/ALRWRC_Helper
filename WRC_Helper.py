@@ -2,7 +2,7 @@ import csv
 import glob
 import math
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 from itertools import zip_longest, chain
 from pathlib import Path
 
@@ -29,6 +29,43 @@ class Stage:
         self.result = result
         self.club = club
         self.fastest_time = "00:00:00.0000000"
+
+def challenge_yes_or_no(question="Continue?"):
+    # Inspired by https://stackoverflow.com/a/3041990
+    valid = {"y": True, "yes": True, "n": False, "no": False}
+
+    while True:
+        choice = input(f"{question} [y/n] ").lower()
+        if choice in valid:
+            return valid[choice]
+        else:
+            print("Please respond with y or n")
+
+def sum_stage_times(total_time_string, stage_time_string):
+    total_time_string = total_time_string[:-1] if len(total_time_string) > 8 else total_time_string
+    stage_time_string = stage_time_string[:-1] if len(stage_time_string) > 8 else stage_time_string
+
+    new_total_time = timedelta()
+    for time in [total_time_string, stage_time_string]:
+        stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
+        stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
+
+        new_total_time += timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3]))
+    return f'0{str(new_total_time)}'
+
+def get_gap_to_leader(leader_time, driver_time):
+    leader_time = leader_time[:-1] if len(leader_time) > 8 else leader_time
+    driver_time = driver_time[:-1] if len(driver_time) > 8 else driver_time
+
+    times = []
+    for time in [leader_time, driver_time]:
+        stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
+        stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
+
+        times.append(timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3])))
+
+    gap_to_leader = times[1] - times[0]
+    return f'0{str(gap_to_leader)}'
 
 class Round:
     def __init__(self, club, number):
@@ -112,23 +149,24 @@ class Round:
     
     def remove_duplicate_drivers(self):
         for duplicate_driver in self.duplicate_drivers:
-            for stage in self.stages:
-                if stage.club != self.drivers[duplicate_driver].club or self.drivers[duplicate_driver].club == None:
-                    for row in stage.result:
-                        if row.get("name") == duplicate_driver:
-                            stage.result.remove(row)
-                            continue
-                    continue
+            for stages in [self.stages, self.multiclass_overall]:
+                for stage in stages:
+                    if stage.club != self.drivers[duplicate_driver].club or self.drivers[duplicate_driver].club is None:
+                        for row in stage.result:
+                            if row.get("name") == duplicate_driver:
+                                stage.result.remove(row)
+                                continue
+                        continue
 
-            for stage in self.multiclass_overall:
-                if stage.club != self.drivers[duplicate_driver].club or self.drivers[duplicate_driver].club == None:
-                    for row in stage.result:
-                        if row.get("name") == duplicate_driver:
-                            stage.result.remove(row)
-                            continue
-                    continue
+            # for stage in self.multiclass_overall:
+            #     if stage.club != self.drivers[duplicate_driver].club or self.drivers[duplicate_driver].club is None:
+            #         for row in stage.result:
+            #             if row.get("name") == duplicate_driver:
+            #                 stage.result.remove(row)
+            #                 continue
+            #         continue
             
-            if self.drivers[duplicate_driver].club == None:
+            if self.drivers[duplicate_driver].club is None:
                 self.drivers.pop(duplicate_driver)
                 print(f'-- {duplicate_driver} has not signed up and has been removed! --')
 
@@ -170,32 +208,6 @@ class Round:
         else:
             return math.floor(len(self.stages)*0.67)
 
-    def sum_stage_times(self, total_time_string, stage_time_string):
-        total_time_string = total_time_string[:-1] if len(total_time_string) > 8 else total_time_string
-        stage_time_string = stage_time_string[:-1] if len(stage_time_string) > 8 else stage_time_string
-        
-        new_total_time = timedelta()
-        for time in [total_time_string, stage_time_string]:
-            stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
-            stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
-
-            new_total_time += timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3]))
-        return f'0{str(new_total_time)}'
-    
-    def get_gap_to_leader(self, leader_time, driver_time):
-        leader_time = leader_time[:-1] if len(leader_time) > 8 else leader_time
-        driver_time = driver_time[:-1] if len(driver_time) > 8 else driver_time
-        
-        times = []
-        for time in [leader_time, driver_time]:
-            stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
-            stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
-
-            times.append(timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3])))
-        
-        gap_to_leader = times[1] - times[0]
-        return f'0{str(gap_to_leader)}'
-
     def find_dnfs(self):
         for idx, stage in enumerate(self.stages):
 
@@ -215,13 +227,13 @@ class Round:
 
                 if row["time"] in nominal_times or (driver.did_not_finish and self.club != "WREC"):
                     row["status"] = "DNF"
-                    if row["time"] in nominal_times and current_nominal_time == None:
+                    if row["time"] in nominal_times and current_nominal_time is None:
                         current_nominal_time = row["time"]
                         current_nominal_delta = row["delta"]
                 else:
                     driver.completed_stages.append(stage.number)
                 
-                driver.total_time = self.sum_stage_times(driver.total_time, row["time"])
+                driver.total_time = sum_stage_times(driver.total_time, row["time"])
 
                 if row["time"] not in nominal_times:
                     stage_times.append(timedelta(
@@ -234,7 +246,7 @@ class Round:
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in current_stage_drivers]
             # print(average_time)
-            if current_nominal_time == None and missing_drivers:
+            if current_nominal_time is None and missing_drivers:
                 average_time = sum(stage_times, timedelta()) / len(stage_times)
                 for time in nominal_times:
                     cutoff = timedelta(minutes=4)
@@ -267,7 +279,7 @@ class Round:
                     "platform": driver.platform, 
                     "club": driver.club, 
                     "status": "DNF"})
-                driver.total_time = self.sum_stage_times(driver.total_time, current_nominal_time)
+                driver.total_time = sum_stage_times(driver.total_time, current_nominal_time)
                 if idx == len(self.stages)-1:
                     driver.did_not_retire = True
 
@@ -280,7 +292,7 @@ class Round:
             for pos, row in enumerate(self.overall.result):
                 final_drivers.append(row["name"])
                 row["status"] = "DNF" if len(self.drivers[row["name"]].completed_stages) < self.get_round_cutoff() else ""
-                self.winner_time = self.sum_stage_times(self.winner_time, row["time"]) if pos == 0 else self.winner_time
+                self.winner_time = sum_stage_times(self.winner_time, row["time"]) if pos == 0 else self.winner_time
                 self.overall.result[pos] = row
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers]
@@ -290,7 +302,7 @@ class Round:
                     "name": driver.name, 
                     "car": driver.car, 
                     "time": driver.total_time, 
-                    "delta": self.get_gap_to_leader(self.winner_time, driver.total_time), 
+                    "delta": get_gap_to_leader(self.winner_time, driver.total_time),
                     "platform": driver.platform, 
                     "club": driver.club, 
                     "status": "DNF" if len(driver.completed_stages) < self.get_round_cutoff() else ""})
@@ -321,18 +333,10 @@ class Round:
         for stage in temp_stages:
             self.stages.append(Stage(stage, temp_stages[stage], None))
 
-def challenge_yes_or_no(question="Continue?"):
-    # Inspired by https://stackoverflow.com/a/3041990
-    valid = {"y": True, "yes": True, "n": False, "no": False}
+def main():
+    paths = []
+    round_number = ""
 
-    while True:
-        choice = input(f"{question} [y/n] ").lower()
-        if choice in valid:
-            return valid[choice]
-        else:
-            print("Please respond with y or n")
-
-def main():    
     for category in club_folders: #Create the folder structure if it doesn't exist
         for folder in club_folders[category]:
             folder = folder if category == "Input" else f"{category}/{folder}"
@@ -366,7 +370,7 @@ def main():
     round_files = {}
     for path in paths:
         temp = (glob.glob(f"{path}/*.csv"))
-        temp = sorted(temp, key= lambda x: re.split(r"/|\\", x)[-1])
+        temp = sorted(temp, key= lambda x: re.split(r"[/\\]", x)[-1])
         temp = sorted(temp, key=len)
         round_files[path.split("/")[0]] = temp
     
@@ -387,9 +391,8 @@ def main():
             print(f"Found {overall_count} overall file(s) in {club_file}.")
 
     if challenge_yes_or_no():
-        round = Round(club, round_number)
+        alr_round = Round(club, round_number)
 
-        wrec_last_day = None
         if club == "WREC":
             while True:
                 try:
@@ -398,25 +401,25 @@ def main():
                         if not challenge_yes_or_no(f'{wrec_last_day} must be less than {len(round_files["WREC"]) -1}. Try again?'):
                             quit("No results have been exported")
                     else:
-                        round.wrec_last_day = wrec_last_day -1
+                        alr_round.wrec_last_day = wrec_last_day - 1
                         break
                 except:
                     if not challenge_yes_or_no(f'You must enter a number less than {len(round_files["WREC"]) -1}. Try again?'):
                         quit("No results have been exported")
 
         if len(valid_clubs[club]) > 1:
-            round.import_drivers()
-            round.import_stages(round_files)
-            round.remove_duplicate_drivers()
-            round.merge_stages()
+            alr_round.import_drivers()
+            alr_round.import_stages(round_files)
+            alr_round.remove_duplicate_drivers()
+            alr_round.merge_stages()
         else:
-            round.import_stages(round_files)
+            alr_round.import_stages(round_files)
 
-        round.find_dnfs()
-        round.calculate_standings()
-        round.export_results()
+        alr_round.find_dnfs()
+        alr_round.calculate_standings()
+        alr_round.export_results()
         
-        dnf_drivers = [driver for driver in round.drivers.values() if driver.did_not_retire]
+        dnf_drivers = [driver for driver in alr_round.drivers.values() if driver.did_not_retire]
         for driver in dnf_drivers:
             print(f'-- {driver.name} failed to retire properly! --')
         
