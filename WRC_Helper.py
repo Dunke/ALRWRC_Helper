@@ -94,7 +94,6 @@ class Round:
             else:
                 if not challenge_yes_or_no(f'The file {file} does not exist. Make sure the list of drivers is in the correct location. Try again?'):
                     quit(no_export_string)
-                    pass
 
     def import_stages(self, files):
         wrc_players = []
@@ -262,12 +261,14 @@ class Round:
                                     nominal_time_choice = input("Select a new nominal time, or quit. [1 = 08min / 2 = 16min / 3 = 25min / 4 = 35min / q = quit] ").lower()
                                     if int(nominal_time_choice) in range(1,5):
                                         current_nominal_time = nominal_times[int(nominal_time_choice)-1]
+                                        current_nominal_delta = get_gap_to_leader(stage.fastest_time, current_nominal_time)
                                         break
                                     elif nominal_time_choice == "q":
                                         quit(no_export_string)
                                 break      
                             else:
                                 current_nominal_time = time
+                                current_nominal_delta = get_gap_to_leader(stage.fastest_time, current_nominal_time)
                                 break
                         break
 
