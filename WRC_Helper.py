@@ -227,7 +227,7 @@ class Round:
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
 
-                if row["time"] in nominal_times or (driver.did_not_finish and self.club != "WREC"):
+                if row["time"] in nominal_times or (driver.did_not_finish and self.club != "WREC"): # Exclude WREC to not tank peoples ELO
                     row["status"] = "DNF"
                     if row["time"] in nominal_times and current_nominal_time is None:
                         current_nominal_time = row["time"]
