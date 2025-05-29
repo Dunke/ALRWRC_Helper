@@ -8,7 +8,7 @@ from pathlib import Path
 
 club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
 valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
-no_export_string = "No results have been exported"
+no_export_string = "No results have been exported."
 initial_time = " 00:00:00.0000000"
 
 class Driver:
@@ -340,12 +340,12 @@ def main():
     paths = []
     round_number = ""
 
-    for category in club_folders: #Create the folder structure if it doesn't exist
+    for category in club_folders: # Create the folder structure if it doesn't exist
         for folder in club_folders[category]:
             folder = folder if category == "Input" else f'{category}/{folder}'
             Path(folder).mkdir(parents=True, exist_ok=True)
     
-    while True:
+    while True: # Asks for a valid club. Will be used as the first level of the glob path
         club = input("Enter the name of the club (WRC / WREC): ").upper()
         if club not in valid_clubs:
             if not challenge_yes_or_no(f'{club} is not a valid club. Try again?'):
@@ -354,14 +354,14 @@ def main():
             break
     
     looking_for_path = True
-    while looking_for_path:
+    while looking_for_path: # Asks for a valid seaons/round. Will be used as the second level of the glob path
         round_number = input("Enter the season and round as 'S# R#': ").upper()
         paths = [f'{path}/{round_number}' for path in valid_clubs[club]]
         for path in paths:
-            if not Path(path).is_dir() or not any(Path(path).iterdir()):
+            if not Path(path).is_dir() or not any(Path(path).iterdir()): # Checks if the directory exists and contains files
                 if not challenge_yes_or_no(f'The directory for {path} does not exist or is empty. Make sure the Racenet files are in the correct location. Try again?'):
                     quit(no_export_string)
-            elif Path(f'Output/{club}/{round_number}.csv').is_file():
+            elif Path(f'Output/{club}/{round_number}.csv').is_file(): # Asks to overwrite the output file if one exists
                 if not challenge_yes_or_no(f'An output file for {club} {round_number} already exists. Overwrite?'):
                     quit(no_export_string)
                 else:
@@ -371,16 +371,16 @@ def main():
                 looking_for_path = False
 
     round_files = {}
-    for path in paths:
+    for path in paths: # Get all stage files for the round and sort them by name and length
         temp = (glob.glob(f'{path}/*.csv'))
         temp = sorted(temp, key= lambda x: re.split(r"[/\\]", x)[-1])
         temp = sorted(temp, key=len)
-        round_files[path.split("/")[0]] = temp
+        round_files[path.split("/")[0]] = temp # Use the first level of the path as the dictionary key
     
-    if not any(round_files.values()):
-        quit("No files were found")
+    if not any(round_files.values()): # Quit if glob didn't find any files
+        quit(f'No files were found. {no_export_string}')
     else:
-        for club_file in round_files:
+        for club_file in round_files: # Count how many files were found
             stage_pattern = r"^((WRC[12]|WREC)\/S\d{1,2} R\d{1,2}[\\\/])wrc2023_event_[a-zA-Z0-9]+_stage[0-9]+_leaderboard_results.csv$"
             overall_pattern = r"^((WRC[12]|WREC)\/S\d{1,2} R\d{1,2}[\\\/])wrc2023_event_[a-zA-Z0-9]+_stage_overall_leaderboard_results.csv$"
             stage_count = 0
@@ -398,7 +398,7 @@ def main():
 
         if club == "WREC":
             while True:
-                try:
+                try: # Asks for the first stage of the last day. Needed for WREC survival check
                     wrec_last_day = int(input("Enter the stage number for the first stage of Day 4: "))
                     if int(wrec_last_day) > len(round_files["WREC"]) -1:
                         if not challenge_yes_or_no(f'{wrec_last_day} must be less than {len(round_files["WREC"]) -1}. Try again?'):
