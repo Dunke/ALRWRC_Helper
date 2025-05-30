@@ -8,17 +8,23 @@ from pathlib import Path
 
 club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
 valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
+points = [40,35,30,26,24,22,20,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]
+power_stage_points = [5,4,3,2,1]
 no_export_string = "No results have been exported."
 initial_time = timedelta()
 
 class Driver:
-    def __init__(self, name, car, club):
+    def __init__(self, name, car, club, tier):
         self.name = name
         self.car = car
         self.platform = None
         self.club = club
+        self.tier = tier
         self.completed_stages = []
         self.total_time = initial_time
+        self.points = 0
+        self.power_stage_points = 0
+        self.total_points = 0
         self.did_not_finish = False # For drivers who completed less than 6 stages in WRC1/2 or retired correctly
         self.did_not_retire = False # For drivers who did not retire correctly and are missing from the results
 
@@ -74,7 +80,7 @@ class Round:
                 with open(file, newline='') as f:
                     for row in list(csv.reader(f)):
                         if row[0] not in self.drivers:
-                            self.drivers[row[0]] = Driver(row[0], row[2], row[1])
+                            self.drivers[row[0]] = Driver(row[0], row[2], row[1], row[3])
                 break
             else:
                 if not challenge_yes_or_no(f'The file {file} does not exist. Make sure the list of drivers is in the correct location. Try again?'):
@@ -123,9 +129,9 @@ class Round:
                         
                         if new_row["name"] not in self.drivers:
                             if self.club == "WREC":
-                                self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["club"])
+                                self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["club"], None)
                             else:
-                                self.drivers[new_row["name"]] = Driver(new_row["name"], None, None)
+                                self.drivers[new_row["name"]] = Driver(new_row["name"], None, None, None)
 
                         if idx < 2 and self.drivers[new_row["name"]].club != new_row["club"]:
                             if new_row["name"] not in self.duplicate_drivers:
@@ -172,7 +178,12 @@ class Round:
             else:
                 writer.writerow(["", position, row["name"], row["car"]])
         else:
-            writer.writerow(["", position, row["name"], row["club"]])
+            if overall_stage:
+                driver = self.drivers[row["name"]]
+                writer.writerow(["", position, row["name"], row["club"], driver.tier, row["car"], row["time"], row["delta"], driver.points, driver.power_stage_points, driver.total_points])
+            else:
+                writer.writerow(["", position, row["name"], row["car"]])
+                
 
     def export_results(self):
         file = f'Output/{self.club}/{self.number}.csv'
@@ -221,6 +232,7 @@ class Round:
                     driver.completed_stages.append(stage.number)
                 
                 driver.total_time = sum_stage_times(driver.total_time, row["time"])
+                row["delta"] = get_gap_to_leader(stage.fastest_time, row["time"])
 
                 if str(row["time"]).split(".")[0] not in nominal_times:
                     stage_times.append(row["time"])
@@ -279,6 +291,7 @@ class Round:
                 final_drivers.append(row["name"])
                 row["status"] = "DNF" if len(self.drivers[row["name"]].completed_stages) < self.get_round_cutoff() else ""
                 self.winner_time = sum_stage_times(self.winner_time, row["time"]) if pos == 0 else self.winner_time
+                row["delta"] = get_gap_to_leader(self.winner_time, row["time"])
                 self.overall.result[pos] = row
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers]
@@ -295,6 +308,15 @@ class Round:
 
             self.overall.result = sorted(self.overall.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             self.overall.result = sorted(self.overall.result, key=lambda x: x["time"])
+
+    def apply_points(self):
+        for pos, row in enumerate(self.stages[-1].result[:5]):
+            self.drivers[row["name"]].power_stage_points = power_stage_points[pos] if row["status"] == "" else 0
+
+        for pos, row in enumerate(self.overall.result):
+            driver = self.drivers[row["name"]]
+            driver.points = points[pos] if row["status"] == "" else 0
+            driver.total_points = driver.points + driver.power_stage_points if row["status"] == "" else 0
 
     def merge_stages(self):
         temp_stages = {}
@@ -402,6 +424,7 @@ def main():
 
         alr_round.find_dnfs()
         alr_round.calculate_standings()
+        if len(valid_clubs[club]) > 1: alr_round.apply_points()
         alr_round.export_results()
         
         dnf_drivers = [driver for driver in alr_round.drivers.values() if driver.did_not_retire]
