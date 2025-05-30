@@ -8,6 +8,7 @@ from pathlib import Path
 
 club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
 valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
+nominal_times = ["0:08:00", "0:16:00", "0:25:00", "0:35:00"]
 points = [40,35,30,26,24,22,20,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]
 power_stage_points = [5,4,3,2,1]
 no_export_string = "No results have been exported."
@@ -208,7 +209,6 @@ class Round:
     def find_dnfs(self):
         for idx, stage in enumerate(self.stages):
 
-            nominal_times = ["0:08:00", "0:16:00", "0:25:00", "0:35:00"]
             current_stage_drivers = []
             current_nominal_time = None
             current_nominal_delta = None
@@ -366,6 +366,8 @@ def main():
             if not Path(path).is_dir() or not any(Path(path).iterdir()): # Checks if the directory exists and contains files
                 if not challenge_yes_or_no(f'The directory for {path} does not exist or is empty. Make sure the Racenet files are in the correct location. Try again?'):
                     quit(no_export_string)
+                else:
+                    break
             elif Path(f'Output/{club}/{round_number}.csv').is_file(): # Asks to overwrite the output file if one exists
                 if not challenge_yes_or_no(f'An output file for {club} {round_number} already exists. Overwrite?'):
                     quit(no_export_string)
