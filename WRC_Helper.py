@@ -236,8 +236,9 @@ class Round:
                     delta = convert_to_timedelta(time) - average_time
                     if delta > cutoff:
                         while True:
-                            print(f'Slowest time on stage {stage.number[-1]} is {stage.slowest_time}')
-                            if not challenge_yes_or_no(f'No nominal time found. Do you want to set {time} as nominal time for stage {stage.number[-1]}?'):
+                            stage_number = re.findall(r'\d+', stage.number)[-1]
+                            print(f'Slowest time on stage {stage_number} is {stage.slowest_time}')
+                            if not challenge_yes_or_no(f'No nominal time found. Do you want to set {time} as nominal time for stage {stage_number}?'):
                                 while True:
                                     nominal_time_choice = input("Select a new nominal time, or quit. [1 = 08min / 2 = 16min / 3 = 25min / 4 = 35min / q = quit] ").lower()
                                     if nominal_time_choice == "q":
