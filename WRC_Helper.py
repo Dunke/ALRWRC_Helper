@@ -79,7 +79,6 @@ class Round:
             else:
                 if not challenge_yes_or_no(f'The file {file} does not exist. Make sure the list of drivers is in the correct location. Try again?'):
                     quit(no_export_string)
-                    pass
 
     def import_stages(self, files):
         wrc_players = []
@@ -213,7 +212,7 @@ class Round:
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
                 
-                if str(row["time"]).split(".")[0] in nominal_times or (driver.did_not_finish and self.club != "WREC"):
+                if str(row["time"]).split(".")[0] in nominal_times or (driver.did_not_finish and self.club != "WREC"): # Exclude WREC to not tank peoples ELO
                     row["status"] = "DNF"
                     if str(row["time"]).split(".")[0] in nominal_times and current_nominal_time is None:
                         current_nominal_time = row["time"]
