@@ -243,7 +243,7 @@ class Round:
                     driver.completed_stages.append(stage.number)
                 
                 driver.total_time = sum_stage_times(driver.total_time, row["time"])
-                row["delta"] = get_gap_to_leader(stage.fastest_time, row["time"])
+                row["delta"] = get_gap_to_leader(stage.fastest_time, row["time"]) if self.club != "WREC" else row["delta"]
 
                 if str(row["time"]).split(".")[0] not in nominal_times:
                     stage_times.append(row["time"])
@@ -302,7 +302,7 @@ class Round:
                 final_drivers.append(row["name"])
                 row["status"] = "DNF" if len(self.drivers[row["name"]].completed_stages) < self.get_round_cutoff() else ""
                 self.winner_time = sum_stage_times(self.winner_time, row["time"]) if pos == 0 else self.winner_time
-                row["delta"] = get_gap_to_leader(self.winner_time, row["time"])
+                row["delta"] = get_gap_to_leader(self.winner_time, row["time"]) if self.club != "WREC" else row["delta"]
                 self.overall.result[pos] = row
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in final_drivers]
