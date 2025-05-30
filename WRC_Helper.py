@@ -181,7 +181,18 @@ class Round:
         else:
             if overall_stage:
                 driver = self.drivers[row["name"]]
-                writer.writerow(["", position, row["name"], row["club"], driver.tier, row["car"], row["time"], row["delta"], driver.points, driver.power_stage_points, driver.total_points])
+                writer.writerow([
+                    "", 
+                    position, 
+                    row["name"], 
+                    row["club"], 
+                    driver.tier, 
+                    row["car"], 
+                    row["time"], 
+                    row["delta"], 
+                    driver.points, 
+                    driver.power_stage_points, 
+                    driver.total_points])
             else:
                 writer.writerow(["", position, row["name"], row["car"]])
                 
