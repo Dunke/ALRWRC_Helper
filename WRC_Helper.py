@@ -229,7 +229,6 @@ class Round:
                 stage.result[pos] = row
 
             missing_drivers = [driver for driver in self.drivers.values() if driver.name not in current_stage_drivers]
-            # print(average_time)
             if current_nominal_time is None and missing_drivers:
                 average_time = sum(stage_times, timedelta()) / len(stage_times)
                 for time in nominal_times:
