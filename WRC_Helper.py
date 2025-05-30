@@ -172,7 +172,7 @@ class Round:
             else:
                 writer.writerow(["", position, row["name"], row["car"]])
         else:
-            writer.writerow(["", position, row["name"], row["club"], f'0{str(row["time"])}', f'0{str(row["delta"])}'])
+            writer.writerow(["", position, row["name"], row["club"]])
 
     def export_results(self):
         file = f'Output/{self.club}/{self.number}.csv'
