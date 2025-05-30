@@ -9,7 +9,7 @@ from pathlib import Path
 club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
 valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
 no_export_string = "No results have been exported."
-initial_time = " 00:00:00.0000000"
+initial_time = timedelta()
 
 class Driver:
     def __init__(self, name, car, club):
@@ -44,31 +44,16 @@ def challenge_yes_or_no(question="Continue?"):
         else:
             print("Please respond with y or n")
 
-def sum_stage_times(total_time_string, stage_time_string):
-    total_time_string = total_time_string[:-1] if len(total_time_string) > 8 else total_time_string
-    stage_time_string = stage_time_string[:-1] if len(stage_time_string) > 8 else stage_time_string
+def convert_to_timedelta(time):
+    stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
+    stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
+    return timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3]))
 
-    new_total_time = timedelta()
-    for time in [total_time_string, stage_time_string]:
-        stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
-        stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
-
-        new_total_time += timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3]))
-    return f'0{str(new_total_time)}'
+def sum_stage_times(total_time, stage_time):
+    return total_time + stage_time
 
 def get_gap_to_leader(leader_time, driver_time):
-    leader_time = leader_time[:-1] if len(leader_time) > 8 else leader_time
-    driver_time = driver_time[:-1] if len(driver_time) > 8 else driver_time
-
-    times = []
-    for time in [leader_time, driver_time]:
-        stage_hours, stage_minutes, temp_stage_seconds = time.split(":")
-        stage_seconds, stage_milliseconds = temp_stage_seconds.split(".") if "." in temp_stage_seconds else (temp_stage_seconds, "000000")
-
-        times.append(timedelta(hours=int(stage_hours), minutes=int(stage_minutes), seconds=int(stage_seconds), milliseconds=int(stage_milliseconds[:3])))
-
-    gap_to_leader = times[1] - times[0]
-    return f'0{str(gap_to_leader)}'
+    return driver_time - leader_time
 
 class Round:
     def __init__(self, club, number):
@@ -114,8 +99,8 @@ class Round:
                             new_row = {"position": row[0], 
                                     "name": row[1], 
                                     "car": row[2], 
-                                    "time": row[3], 
-                                    "delta": row[4], 
+                                    "time": convert_to_timedelta(row[3]), 
+                                    "delta": convert_to_timedelta(row[4]), 
                                     "platform": row[5], 
                                     "club": club, 
                                     "status": ""}
@@ -123,9 +108,9 @@ class Round:
                             new_row = {"position": row[0], 
                                     "name": row[1], 
                                     "car": row[2], 
-                                    "time": row[3], 
-                                    "penalty": row[4], 
-                                    "delta": row[5], 
+                                    "time": convert_to_timedelta(row[3]), 
+                                    "penalty": convert_to_timedelta(row[4]), 
+                                    "delta": convert_to_timedelta(row[5]), 
                                     "platform": row[6], 
                                     "club": club, 
                                     "status": ""}
@@ -188,7 +173,7 @@ class Round:
             else:
                 writer.writerow(["", position, row["name"], row["car"]])
         else:
-            writer.writerow(["", position, row["name"], row["club"]])
+            writer.writerow(["", position, row["name"], row["club"], f'0{str(row["time"])}', f'0{str(row["delta"])}'])
 
     def export_results(self):
         file = f'Output/{self.club}/{self.number}.csv'
@@ -213,7 +198,7 @@ class Round:
     def find_dnfs(self):
         for idx, stage in enumerate(self.stages):
 
-            nominal_times = ["00:08:00", "00:16:00", "00:25:00", "00:35:00"]
+            nominal_times = ["0:08:00", "0:16:00", "0:25:00", "0:35:00"]
             current_stage_drivers = []
             current_nominal_time = None
             current_nominal_delta = None
@@ -227,10 +212,10 @@ class Round:
 
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
-
-                if row["time"] in nominal_times or (driver.did_not_finish and self.club != "WREC"):
+                
+                if str(row["time"]).split(".")[0] in nominal_times or (driver.did_not_finish and self.club != "WREC"):
                     row["status"] = "DNF"
-                    if row["time"] in nominal_times and current_nominal_time is None:
+                    if str(row["time"]).split(".")[0] in nominal_times and current_nominal_time is None:
                         current_nominal_time = row["time"]
                         current_nominal_delta = row["delta"]
                 else:
@@ -238,11 +223,8 @@ class Round:
                 
                 driver.total_time = sum_stage_times(driver.total_time, row["time"])
 
-                if row["time"] not in nominal_times:
-                    stage_times.append(timedelta(
-                        hours=int(row["time"].split(":")[0]), 
-                        minutes=int(row["time"].split(":")[1]), 
-                        seconds=int(row["time"].split(":")[2].split(".")[0])))
+                if str(row["time"]).split(".")[0] not in nominal_times:
+                    stage_times.append(row["time"])
 
                 current_stage_drivers.append(row["name"])
                 stage.result[pos] = row
@@ -253,7 +235,7 @@ class Round:
                 average_time = sum(stage_times, timedelta()) / len(stage_times)
                 for time in nominal_times:
                     cutoff = timedelta(minutes=4)
-                    delta = timedelta(minutes=int(time.split(":")[1])) - average_time
+                    delta = convert_to_timedelta(time) - average_time
                     if delta > cutoff:
                         while True:
                             print(f'Slowest time on stage {stage.number[-1]} is {stage.slowest_time}')
@@ -263,11 +245,13 @@ class Round:
                                     if nominal_time_choice == "q":
                                         quit(no_export_string)
                                     elif int(nominal_time_choice) in range(1,5):
-                                        current_nominal_time = nominal_times[int(nominal_time_choice)-1]
+                                        current_nominal_time = convert_to_timedelta(nominal_times[int(nominal_time_choice)-1])
+                                        current_nominal_delta = get_gap_to_leader(stage.fastest_time, current_nominal_time)
                                         break
                                 break      
                             else:
-                                current_nominal_time = time
+                                current_nominal_time = convert_to_timedelta(time)
+                                current_nominal_delta = get_gap_to_leader(stage.fastest_time, current_nominal_time)
                                 break
                         break
 
