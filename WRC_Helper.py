@@ -108,7 +108,7 @@ class Round:
                     #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '', '']            
                     #{"position": "1", "name": "Slokksi", "car": "Volkswagen Polo 2017", "time": "00:04:23.2610000", "penalty": "00:00:00", "delta": "00:00:00", "platform": "XBOX", "club": "", "status": ""}
                     next(f)
-                    for idy, row in enumerate(list(csv.reader(f))):
+                    for row in list(csv.reader(f)):
 
                         if idx == len(files[club]) -1:
                             new_row = {"position": row[0], 
@@ -256,15 +256,15 @@ class Round:
                     delta = timedelta(minutes=int(time.split(":")[1])) - average_time
                     if delta > cutoff:
                         while True:
-                            print(f'Slowest time on stage {stage.number} is {stage.slowest_time}')
-                            if not challenge_yes_or_no(f'No nominal time found. Do you want to set {time} as nominal time for stage {stage.number}?'):
+                            print(f'Slowest time on stage {stage.number[-1]} is {stage.slowest_time}')
+                            if not challenge_yes_or_no(f'No nominal time found. Do you want to set {time} as nominal time for stage {stage.number[-1]}?'):
                                 while True:
                                     nominal_time_choice = input("Select a new nominal time, or quit. [1 = 08min / 2 = 16min / 3 = 25min / 4 = 35min / q = quit] ").lower()
-                                    if int(nominal_time_choice) in range(1,5):
+                                    if nominal_time_choice == "q":
+                                        quit(no_export_string)
+                                    elif int(nominal_time_choice) in range(1,5):
                                         current_nominal_time = nominal_times[int(nominal_time_choice)-1]
                                         break
-                                    elif nominal_time_choice == "q":
-                                        quit(no_export_string)
                                 break      
                             else:
                                 current_nominal_time = time
