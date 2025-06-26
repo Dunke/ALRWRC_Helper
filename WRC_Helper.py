@@ -75,7 +75,6 @@ class Round:
         self.winner_time = initial_time
 
     def import_drivers(self):
-        print(self.number)
         file = f'WRC Drivers/Drivers {self.number.rsplit(" ", 1)[0]}.csv'
         while True:
             if Path(file).is_file():
@@ -166,7 +165,7 @@ class Round:
             
             if self.drivers[duplicate_driver].club is None:
                 self.drivers.pop(duplicate_driver)
-                print(f'-- {duplicate_driver} has not signed up and has been removed! --')                
+                print(f'-- {duplicate_driver} has been removed from the round! --')                
 
     def export_wrec_results(self):
         file = f'Output/WREC/{self.number}.csv'
@@ -191,7 +190,6 @@ class Round:
     
     def export_wrc_results(self):
         files = [f'Output/WRC/{self.number}.csv', f'Output/WRC1/{self.number}.csv', f'Output/WRC2/{self.number}.csv']
-        #file = f'Output/{self.club}/{self.number}.csv'
         for file in files:
             with open(file, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
