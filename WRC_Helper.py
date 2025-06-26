@@ -9,9 +9,11 @@ from pathlib import Path
 club_folders = {"Input": ["WRC1", "WRC2", "WREC"], "Output": ["WRC", "WREC"]}
 valid_clubs = {"WRC": ["WRC1", "WRC2"], "WREC": ["WREC"]}#, "WRC1": ["WRC1"]}
 nominal_times = ["0:08:00", "0:16:00", "0:25:00", "0:35:00"]
+car_penalty_times_overall = ["00:03:00", "00:05:00"]
+car_penalty_times_ps = ["00:00:10", "00:00:30"]
 points = [40,35,30,26,24,22,20,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]
 power_stage_points = [5,4,3,2,1]
-no_export_string = "No results have been exported."
+no_export_string = "\nNo results have been exported!"
 initial_time = timedelta()
 
 class Driver:
@@ -26,6 +28,7 @@ class Driver:
         self.points = 0
         self.power_stage_points = 0
         self.total_points = 0
+        self.used_wrong_car = None
         self.did_not_finish = False # For drivers who completed less than 6 stages in WRC1/2 or retired correctly
         self.did_not_retire = False # For drivers who did not retire correctly and are missing from the results
 
@@ -47,6 +50,7 @@ def challenge_yes_or_no(question="Continue?"):
     while True:
         choice = input(f'{question} [y/n] ').lower()
         if choice in valid:
+            print()
             return valid[choice]
         else:
             print("Please respond with y or n")
@@ -105,6 +109,7 @@ class Round:
                     #['1', 'Slokksi', 'Volkswagen Polo 2017', '00:04:23.2610000', '00:00:00', '00:00:00', 'XBOX', '', '']            
                     #{"position": "1", "name": "Slokksi", "car": "Volkswagen Polo 2017", "time": "00:04:23.2610000", "penalty": "00:00:00", "delta": "00:00:00", "platform": "XBOX", "club": "", "status": ""}
                     next(f)
+                    asked_for_wrc_player = False
                     for row in list(csv.reader(f)):
 
                         if idx == len(files[club]) -1:
@@ -132,6 +137,7 @@ class Round:
                                 new_row["name"] = wrc_players[0]
                             else:    
                                 new_row["name"] = input(f'Enter the name of the driver in position {new_row["position"]} of stage {str(idx+1)}: ')
+                                asked_for_wrc_player = True
                                 wrc_players.append(new_row["name"])
                         
                         if new_row["name"] not in self.drivers:
@@ -145,6 +151,9 @@ class Round:
                                 self.duplicate_drivers.append(new_row["name"])
 
                         temp_file.append(new_row)
+                    
+                    if asked_for_wrc_player:
+                            print()
 
                 if idx == len(files[club]) -1:
                     if len(files) == 1:
@@ -167,7 +176,7 @@ class Round:
             
             if self.drivers[duplicate_driver].club is None:
                 self.drivers.pop(duplicate_driver)
-                print(f'-- {duplicate_driver} has been removed from the round! --')                
+                print(f'-- {duplicate_driver} has been removed from the round!')                
 
     def export_wrec_results(self):
         file = f'Output/WREC/{self.number}.csv'
@@ -199,8 +208,6 @@ class Round:
                     writer.writerow(["", "Position", "Name", "Class", "Tier", "Car", "Time", "Diff", "Points", "PS Points", "Total Points"])
                     for idx, row in enumerate(self.overall.result):
                         driver = self.drivers[row["name"]]
-                        if driver.car != row["car"]:
-                            print(f'-- {driver.name} has used the wrong car! --')
                         writer.writerow([
                             "", 
                             idx+1 if row["status"] == "" else row["status"], 
@@ -217,14 +224,14 @@ class Round:
                     for stage in self.stages:
                         writer.writerow([stage.number])
                         position = 1
-                        for idx, row in enumerate(stage.result):
+                        for row in stage.result:
                             if file.split("/")[1] == row["club"]:
                                 writer.writerow(["", position if row["status"] == "" else row["status"], row["name"]])
                                 position += 1
                         
                     writer.writerow([self.overall.number])
                     position = 1
-                    for idx, row in enumerate(self.overall.result):
+                    for row in self.overall.result:
                         if file.split("/")[1] == row["club"]:
                             writer.writerow(["", position if row["status"] == "" else row["status"], row["name"]])
                             position += 1
@@ -261,6 +268,32 @@ class Round:
                     driver.completed_stages.append(stage.number)
                 
                 driver.total_time = sum_stage_times(driver.total_time, row["time"])
+                
+                if idx >= len(self.stages)-1 and driver.car != row["car"]:
+                    print(f'-> {driver.name} has used the wrong car!')
+                    while True:
+                        try:
+                            choice = int(input("Enter which number of offense this is [1 = First / 2 = Second / 3 = Third] "))
+                        except ValueError:
+                            print("Invalid choice. Try again!")
+                            continue
+
+                        match choice:
+                            case 1 | 2:
+                                #driver.total_time = sum_stage_times(driver.total_time, convert_to_timedelta(car_penalty_times_overall[choice-1]))
+                                driver.used_wrong_car = choice
+                                row["time"] = sum_stage_times(row["time"], convert_to_timedelta(car_penalty_times_ps[choice-1]))
+                                row["penalty"] = sum_stage_times(row["penalty"], convert_to_timedelta(car_penalty_times_ps[choice-1]))
+                                break
+                            case 3:
+                                driver.did_not_finish = True
+                                break
+                            case _:
+                                if not challenge_yes_or_no("You must choose a number between 1 and 3 Try again?"):
+                                    quit(no_export_string)
+
+                    print(f'-- Penalties have been applied to {driver.name}\n')
+
                 row["delta"] = get_gap_to_leader(stage.fastest_time, row["time"]) if self.club != "WREC" else row["delta"]
 
                 if str(row["time"]).split(".")[0] not in nominal_times:
@@ -278,7 +311,7 @@ class Round:
                     if delta > cutoff:
                         while True:
                             stage_number = re.findall(r'\d+', stage.number)[-1]
-                            print(f'Slowest time on stage {stage_number} is {stage.slowest_time}')
+                            print(f'-> Slowest time on stage {stage_number} is {stage.slowest_time}')
                             if not challenge_yes_or_no(f'No nominal time found. Do you want to set {time} as nominal time for stage {stage_number}?'):
                                 while True:
                                     nominal_time_choice = input("Select a new nominal time, or quit. [1 = 08min / 2 = 16min / 3 = 25min / 4 = 35min / q = quit] ").lower()
@@ -318,8 +351,11 @@ class Round:
         if self.overall:
             final_drivers = []
             for pos, row in enumerate(self.overall.result):
-                final_drivers.append(row["name"])
-                row["status"] = "DNF" if len(self.drivers[row["name"]].completed_stages) < self.get_round_cutoff() else ""
+                driver = self.drivers[row["name"]]
+                final_drivers.append(driver.name)
+                row["status"] = "DNF" if len(driver.completed_stages) < self.get_round_cutoff() else ""
+                if driver.used_wrong_car is not None:
+                    row["time"] = sum_stage_times(row["time"], convert_to_timedelta(car_penalty_times_overall[driver.used_wrong_car-1]))
                 self.winner_time = sum_stage_times(self.winner_time, row["time"]) if pos == 0 else self.winner_time
                 row["delta"] = get_gap_to_leader(self.winner_time, row["time"]) if self.club != "WREC" else row["delta"]
                 self.overall.result[pos] = row
@@ -438,10 +474,11 @@ def main():
                 try: # Asks for the first stage of the last day. Needed for WREC survival check
                     wrec_last_day = int(input("Enter the stage number for the first stage of Day 4: "))
                     if int(wrec_last_day) > len(round_files["WREC"]) -1:
-                        if not challenge_yes_or_no(f'{wrec_last_day} must be less than {len(round_files["WREC"]) -1}. Try again?'):
+                        if not challenge_yes_or_no(f'Number must be less than {len(round_files["WREC"]) -1}. Try again?'):
                             quit(no_export_string)
                     else:
                         alr_round.wrec_last_day = wrec_last_day - 1
+                        print()
                         break
                 except ValueError:
                     print(f'You must enter a number less than {len(round_files["WREC"]) -1}.')
@@ -450,6 +487,7 @@ def main():
             alr_round.import_drivers()
             alr_round.import_stages(round_files)
             alr_round.remove_duplicate_drivers()
+            print()
             alr_round.merge_stages()
         else:
             alr_round.import_stages(round_files)
@@ -464,11 +502,11 @@ def main():
         
         dnf_drivers = [driver for driver in alr_round.drivers.values() if driver.did_not_retire]
         for driver in dnf_drivers:
-            print(f'-- {driver.name} failed to retire properly! --')
+            print(f'-- {driver.name} failed to retire properly!')
         
-        print("Results have been successfully exported!")
+        print("\nResults have been successfully exported!")
     else:
-        print("No results have been exported!")
+        print(no_export_string)
 
 if __name__ == "__main__":
     main()
