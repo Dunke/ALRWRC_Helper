@@ -75,13 +75,18 @@ class Round:
         self.winner_time = initial_time
 
     def import_drivers(self):
+        print(self.number)
         file = f'WRC Drivers/Drivers {self.number.rsplit(" ", 1)[0]}.csv'
         while True:
             if Path(file).is_file():
                 with open(file, newline='') as f:
                     for row in list(csv.reader(f)):
                         if row[0] not in self.drivers:
-                            self.drivers[row[0]] = Driver(row[0], row[2], row[1], row[3])
+                            drop_rounds = [x.split(" ")[1] for x in row[4].split(", ")]
+                            if self.number[-1] in drop_rounds:
+                                continue
+                            else:
+                                self.drivers[row[0]] = Driver(row[0], row[2], row[1], row[3])
                 break
             else:
                 if not challenge_yes_or_no(f'The file {file} does not exist. Make sure the list of drivers is in the correct location. Try again?'):
