@@ -166,55 +166,68 @@ class Round:
             
             if self.drivers[duplicate_driver].club is None:
                 self.drivers.pop(duplicate_driver)
-                print(f'-- {duplicate_driver} has not signed up and has been removed! --')
+                print(f'-- {duplicate_driver} has not signed up and has been removed! --')                
 
-    def wrc_writerow(self, writer, row, index, overall_stage):
-        position = index +1 if row["status"] == "" else row["status"]
-        
-        if self.club == "WREC":
-            if overall_stage:
-                last_day_length = len(self.stages) - self.wrec_last_day
-                last_day_cutoff = len(self.drivers[row["name"]].completed_stages) - last_day_length
-                first_days_stages = [stage for stage in self.drivers[row["name"]].completed_stages[:self.wrec_last_day]]
-                last_day_stages = [stage for stage in self.drivers[row["name"]].completed_stages[last_day_cutoff:]]
-                survived_first_days = "YES" if first_days_stages[-1].split(" ")[-1] == f'S{self.wrec_last_day}' else "NO"
-                survived_last_day = "YES" if last_day_stages[0].split(" ")[-1] == f'S{self.wrec_last_day+1}' else "NO"
-
-                writer.writerow(["", position, row["name"], row["car"], "", survived_first_days, survived_last_day])
-            else:
-                writer.writerow(["", position, row["name"], row["car"]])
-        else:
-            if overall_stage:
-                driver = self.drivers[row["name"]]
-                writer.writerow([
-                    "", 
-                    position, 
-                    row["name"], 
-                    row["club"], 
-                    driver.tier, 
-                    row["car"], 
-                    row["time"], 
-                    row["delta"], 
-                    driver.points, 
-                    driver.power_stage_points, 
-                    driver.total_points])
-            else:
-                writer.writerow(["", position, row["name"], row["car"]])
-                
-
-    def export_results(self):
-        file = f'Output/{self.club}/{self.number}.csv'
+    def export_wrec_results(self):
+        file = f'Output/WREC/{self.number}.csv'
 
         with open(file, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             for stage in self.stages:
                 writer.writerow([stage.number])
                 for idx, row in enumerate(stage.result):
-                    self.wrc_writerow(writer, row, idx, False)
+                    writer.writerow(["", idx+1 if row["status"] == "" else row["status"], row["name"], row["car"]])
                 
             writer.writerow([self.overall.number])
             for idx, row in enumerate(self.overall.result):
-                self.wrc_writerow(writer, row, idx, True)
+                last_day_length = len(self.stages) - self.wrec_last_day
+                last_day_cutoff = len(self.drivers[row["name"]].completed_stages) - last_day_length
+                first_days_stages = [stage for stage in self.drivers[row["name"]].completed_stages[:self.wrec_last_day]]
+                last_day_stages = [stage for stage in self.drivers[row["name"]].completed_stages[last_day_cutoff:]]
+                survived_first_days = "YES" if first_days_stages[-1].split(" ")[-1] == f'S{self.wrec_last_day}' else "NO"
+                survived_last_day = "YES" if last_day_stages[0].split(" ")[-1] == f'S{self.wrec_last_day+1}' else "NO"
+                
+                writer.writerow(["", idx+1 if row["status"] == "" else row["status"], row["name"], row["car"], "", survived_first_days, survived_last_day])
+    
+    def export_wrc_results(self):
+        files = [f'Output/WRC/{self.number}.csv', f'Output/WRC1/{self.number}.csv', f'Output/WRC2/{self.number}.csv']
+        #file = f'Output/{self.club}/{self.number}.csv'
+        for file in files:
+            with open(file, "w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                if file.split("/")[1] == "WRC":
+                    writer.writerow(["", "Position", "Name", "Class", "Tier", "Car", "Time", "Diff", "Points", "PS Points", "Total Points"])
+                    for idx, row in enumerate(self.overall.result):
+                        driver = self.drivers[row["name"]]
+                        if driver.car != row["car"]:
+                            print(f'-- {driver.name} has used the wrong car! --')
+                        writer.writerow([
+                            "", 
+                            idx+1 if row["status"] == "" else row["status"], 
+                            row["name"], 
+                            row["club"], 
+                            driver.tier, 
+                            row["car"], 
+                            row["time"], 
+                            row["delta"], 
+                            driver.points, 
+                            driver.power_stage_points, 
+                            driver.total_points])
+                else:
+                    for stage in self.stages:
+                        writer.writerow([stage.number])
+                        position = 1
+                        for idx, row in enumerate(stage.result):
+                            if file.split("/")[1] == row["club"]:
+                                writer.writerow(["", position if row["status"] == "" else row["status"], row["name"]])
+                                position += 1
+                        
+                    writer.writerow([self.overall.number])
+                    position = 1
+                    for idx, row in enumerate(self.overall.result):
+                        if file.split("/")[1] == row["club"]:
+                            writer.writerow(["", position if row["status"] == "" else row["status"], row["name"]])
+                            position += 1
 
     def get_round_cutoff(self):
         if self.club == "WREC":
@@ -443,8 +456,11 @@ def main():
 
         alr_round.find_dnfs()
         alr_round.calculate_standings()
-        if len(valid_clubs[club]) > 1: alr_round.apply_points()
-        alr_round.export_results()
+        if len(valid_clubs[club]) > 1:
+            alr_round.apply_points()
+            alr_round.export_wrc_results()
+        else:
+            alr_round.export_wrec_results()
         
         dnf_drivers = [driver for driver in alr_round.drivers.values() if driver.did_not_retire]
         for driver in dnf_drivers:
