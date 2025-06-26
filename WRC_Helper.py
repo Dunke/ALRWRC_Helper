@@ -75,11 +75,13 @@ class Round:
         self.winner_time = initial_time
 
     def import_drivers(self):
-        file = f'WRC Drivers/Drivers {self.number.rsplit(" ", 1)[0]}.csv'
+        file = f'WRC Drivers/Drivers {self.number}.csv'
         while True:
             if Path(file).is_file():
                 with open(file, newline='') as f:
                     for row in list(csv.reader(f)):
+                        #EXAMPLE ROW:
+                        #["Slokksi", "WRC1", "Master", "Volkswagen Polo 2017", "Round 9 - Croatia, Round 10 - Chile"]
                         if row[0] not in self.drivers:
                             drop_rounds = [x.split(" ")[1] for x in row[4].split(", ")]
                             if self.number[-1] in drop_rounds:
