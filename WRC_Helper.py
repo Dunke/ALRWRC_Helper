@@ -194,8 +194,8 @@ class Round:
                 last_day_cutoff = len(self.drivers[row["name"]].completed_stages) - last_day_length
                 first_days_stages = [stage for stage in self.drivers[row["name"]].completed_stages[:self.wrec_last_day]]
                 last_day_stages = [stage for stage in self.drivers[row["name"]].completed_stages[last_day_cutoff:]]
-                survived_first_days = "YES" if first_days_stages[-1].split(" ")[-1] == f'S{self.wrec_last_day}' else "NO"
-                survived_last_day = "YES" if last_day_stages[0].split(" ")[-1] == f'S{self.wrec_last_day+1}' else "NO"
+                survived_first_days = "YES" if first_days_stages and first_days_stages[-1].split(" ")[-1] == f'S{self.wrec_last_day}' else "NO"
+                survived_last_day = "YES" if last_day_stages and last_day_stages[0].split(" ")[-1] == f'S{self.wrec_last_day+1}' else "NO"
                 
                 writer.writerow(["", idx+1 if row["status"] == "" else row["status"], row["name"], row["car"], "", survived_first_days, survived_last_day])
     
