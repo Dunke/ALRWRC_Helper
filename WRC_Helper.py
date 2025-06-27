@@ -269,7 +269,7 @@ class Round:
                 
                 driver.total_time = sum_stage_times(driver.total_time, row["time"])
                 
-                if idx >= len(self.stages)-1 and driver.car != row["car"]:
+                if idx >= len(self.stages)-1 and driver.car != row["car"] and not driver.did_not_finish:
                     print(f'-> {driver.name} has used the wrong car!')
                     while True:
                         try:
@@ -280,7 +280,6 @@ class Round:
 
                         match choice:
                             case 1 | 2:
-                                #driver.total_time = sum_stage_times(driver.total_time, convert_to_timedelta(car_penalty_times_overall[choice-1]))
                                 driver.used_wrong_car = choice
                                 row["time"] = sum_stage_times(row["time"], convert_to_timedelta(car_penalty_times_ps[choice-1]))
                                 row["penalty"] = sum_stage_times(row["penalty"], convert_to_timedelta(car_penalty_times_ps[choice-1]))
