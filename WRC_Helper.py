@@ -342,8 +342,8 @@ class Round:
                 if idx == len(self.stages)-1:
                     driver.did_not_retire = True
 
-            stage.result = sorted(stage.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             stage.result = sorted(stage.result, key=lambda x: x["time"])
+            stage.result = sorted(stage.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             self.stages[idx] = stage
     
     def calculate_standings(self):
