@@ -271,7 +271,6 @@ class Round:
                 
                 if idx >= len(self.stages)-1 and driver.car != row["car"] and not driver.did_not_finish:
                     print(f'-> {driver.name} has used the wrong car!')
-                    print(driver.car, row["car"])
                     while True:
                         try:
                             choice = int(input("Enter which number of offense this is [1 = First / 2 = Second / 3 = Third] "))
