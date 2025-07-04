@@ -91,7 +91,7 @@ class Round:
                             if self.number[-1] in drop_rounds:
                                 continue
                             else:
-                                self.drivers[row[0]] = Driver(row[0], row[2], row[1], row[3])
+                                self.drivers[row[0]] = Driver(row[0], row[3], row[1], row[2])
                 break
             else:
                 if not challenge_yes_or_no(f'The file {file} does not exist. Make sure the list of drivers is in the correct location. Try again?'):
@@ -271,6 +271,7 @@ class Round:
                 
                 if idx >= len(self.stages)-1 and driver.car != row["car"] and not driver.did_not_finish:
                     print(f'-> {driver.name} has used the wrong car!')
+                    print(driver.car, row["car"])
                     while True:
                         try:
                             choice = int(input("Enter which number of offense this is [1 = First / 2 = Second / 3 = Third] "))
