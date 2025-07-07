@@ -71,6 +71,7 @@ class Round:
         self.club = club
         self.number = number
         self.drivers = {}
+        self.participating_drivers = []
         self.duplicate_drivers = []
         self.stages = []
         self.overall = None
@@ -89,7 +90,7 @@ class Round:
                         if row[0] not in self.drivers:
                             drop_rounds = [x.split(" ")[1] for x in row[4].split(", ")]
                             if self.number[-1] in drop_rounds:
-                                continue
+                                self.drivers[row[0]] = Driver(row[0], row[3], None, row[2])
                             else:
                                 self.drivers[row[0]] = Driver(row[0], row[3], row[1], row[2])
                 break
@@ -113,23 +114,23 @@ class Round:
                     for row in list(csv.reader(f)):
 
                         if idx == len(files[club]) -1:
-                            new_row = {"position": row[0], 
-                                    "name": row[1], 
-                                    "car": row[2], 
-                                    "time": convert_to_timedelta(row[3]), 
-                                    "delta": convert_to_timedelta(row[4]), 
-                                    "platform": row[5], 
-                                    "club": club, 
+                            new_row = {"position": row[0],
+                                    "name": row[1],
+                                    "car": row[2],
+                                    "time": convert_to_timedelta(row[3]),
+                                    "delta": convert_to_timedelta(row[4]),
+                                    "platform": row[5],
+                                    "club": club,
                                     "status": ""}
                         else:
-                            new_row = {"position": row[0], 
-                                    "name": row[1], 
-                                    "car": row[2], 
-                                    "time": convert_to_timedelta(row[3]), 
-                                    "penalty": convert_to_timedelta(row[4]), 
-                                    "delta": convert_to_timedelta(row[5]), 
-                                    "platform": row[6], 
-                                    "club": club, 
+                            new_row = {"position": row[0],
+                                    "name": row[1],
+                                    "car": row[2],
+                                    "time": convert_to_timedelta(row[3]),
+                                    "penalty": convert_to_timedelta(row[4]),
+                                    "delta": convert_to_timedelta(row[5]),
+                                    "platform": row[6],
+                                    "club": club,
                                     "status": ""}
 
                         if new_row["name"] == "WRC Player":
@@ -139,19 +140,22 @@ class Round:
                                 new_row["name"] = input(f'Enter the name of the driver in position {new_row["position"]} of stage {str(idx+1)}: ')
                                 asked_for_wrc_player = True
                                 wrc_players.append(new_row["name"])
-                        
+
                         if new_row["name"] not in self.drivers:
                             if self.club == "WREC":
                                 self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["club"], None)
                             else:
                                 self.drivers[new_row["name"]] = Driver(new_row["name"], None, None, None)
 
-                        if idx < 2 and self.drivers[new_row["name"]].club != new_row["club"]:
-                            if new_row["name"] not in self.duplicate_drivers:
-                                self.duplicate_drivers.append(new_row["name"])
+                        if idx < 2:
+                            if self.drivers[new_row["name"]].club != new_row["club"]:
+                                if new_row["name"] not in self.duplicate_drivers:
+                                    self.duplicate_drivers.append(new_row["name"])
+                            else:
+                                self.participating_drivers.append(new_row["name"])
 
                         temp_file.append(new_row)
-                    
+
                     if asked_for_wrc_player:
                             print()
 
@@ -162,8 +166,8 @@ class Round:
                         self.multiclass_overall.append(Stage(self.number, temp_file, club))
                 else:
                     self.stages.append(Stage(f'{self.number} S{str(idx + 1)}', temp_file, club))
-    
-    def remove_duplicate_drivers(self):
+
+    def filter_drivers(self):
         for duplicate_driver in self.duplicate_drivers:
             for stages in [self.stages, self.multiclass_overall]:
                 for stage in stages:
@@ -173,10 +177,15 @@ class Round:
                                 stage.result.remove(row)
                                 continue
                         continue
-            
+
             if self.drivers[duplicate_driver].club is None:
+                drop_reason = "Dropped round" if self.drivers[duplicate_driver].car is not None else "Not signed up"
                 self.drivers.pop(duplicate_driver)
-                print(f'-- {duplicate_driver} has been removed from the round!')                
+                print(f'-- {duplicate_driver} has been removed from the round! (Reason: {drop_reason})')
+        
+        absent_drivers = [driver.name for driver in self.drivers.values() if driver.name not in self.participating_drivers] 
+        for driver in absent_drivers:
+            self.drivers.pop(driver)
 
     def export_wrec_results(self):
         file = f'Output/WREC/{self.number}.csv'
@@ -187,7 +196,7 @@ class Round:
                 writer.writerow([stage.number])
                 for idx, row in enumerate(stage.result):
                     writer.writerow(["", idx+1 if row["status"] == "" else row["status"], row["name"], row["car"]])
-                
+
             writer.writerow([self.overall.number])
             for idx, row in enumerate(self.overall.result):
                 last_day_length = len(self.stages) - self.wrec_last_day
@@ -196,9 +205,9 @@ class Round:
                 last_day_stages = [stage for stage in self.drivers[row["name"]].completed_stages[last_day_cutoff:]]
                 survived_first_days = "YES" if first_days_stages and first_days_stages[-1].split(" ")[-1] == f'S{self.wrec_last_day}' else "NO"
                 survived_last_day = "YES" if last_day_stages and last_day_stages[0].split(" ")[-1] == f'S{self.wrec_last_day+1}' else "NO"
-                
+
                 writer.writerow(["", idx+1 if row["status"] == "" else row["status"], row["name"], row["car"], "", survived_first_days, survived_last_day])
-    
+
     def export_wrc_results(self):
         files = [f'Output/WRC/{self.number}.csv', f'Output/WRC1/{self.number}.csv', f'Output/WRC2/{self.number}.csv']
         for file in files:
@@ -210,15 +219,15 @@ class Round:
                         driver = self.drivers[row["name"]]
                         writer.writerow([
                             "", 
-                            idx+1 if row["status"] == "" else row["status"], 
-                            row["name"], 
-                            row["club"], 
-                            driver.tier, 
-                            row["car"], 
-                            row["time"], 
-                            row["delta"], 
-                            driver.points, 
-                            driver.power_stage_points, 
+                            idx+1 if row["status"] == "" else row["status"],
+                            row["name"],
+                            row["club"],
+                            driver.tier,
+                            row["car"],
+                            row["time"],
+                            row["delta"],
+                            driver.points,
+                            driver.power_stage_points,
                             driver.total_points])
                 else:
                     for stage in self.stages:
@@ -228,7 +237,7 @@ class Round:
                             if file.split("/")[1] == row["club"]:
                                 writer.writerow(["", position if row["status"] == "" else row["status"], row["name"]])
                                 position += 1
-                        
+
                     writer.writerow([self.overall.number])
                     position = 1
                     for row in self.overall.result:
@@ -258,7 +267,7 @@ class Round:
 
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
-                
+
                 if str(row["time"]).split(".")[0] in nominal_times or (driver.did_not_finish and self.club != "WREC"): # Exclude WREC to not tank peoples ELO
                     row["status"] = "DNF"
                     if str(row["time"]).split(".")[0] in nominal_times and current_nominal_time is None:
@@ -266,9 +275,9 @@ class Round:
                         current_nominal_delta = row["delta"]
                 else:
                     driver.completed_stages.append(stage.number)
-                
+
                 driver.total_time = sum_stage_times(driver.total_time, row["time"])
-                
+
                 if idx >= len(self.stages)-1 and driver.car != row["car"] and not driver.did_not_finish:
                     print(f'-> {driver.name} has used the wrong car!')
                     while True:
@@ -329,14 +338,14 @@ class Round:
 
             for driver in missing_drivers:
                 stage.result.append({
-                    "position": len(stage.result)+1, 
-                    "name": driver.name, 
-                    "car": driver.car, 
-                    "time": current_nominal_time, 
-                    "penalty": current_nominal_time, 
-                    "delta": current_nominal_delta, 
-                    "platform": driver.platform, 
-                    "club": driver.club, 
+                    "position": len(stage.result)+1,
+                    "name": driver.name,
+                    "car": driver.car,
+                    "time": current_nominal_time,
+                    "penalty": current_nominal_time,
+                    "delta": current_nominal_delta,
+                    "platform": driver.platform,
+                    "club": driver.club,
                     "status": "DNF"})
                 driver.total_time = sum_stage_times(driver.total_time, current_nominal_time)
                 if idx == len(self.stages)-1:
@@ -345,7 +354,7 @@ class Round:
             stage.result = sorted(stage.result, key=lambda x: x["time"])
             stage.result = sorted(stage.result, key=lambda x: (not x["status"], x["status"]), reverse=True)
             self.stages[idx] = stage
-    
+
     def calculate_standings(self):
         if self.overall:
             final_drivers = []
@@ -389,7 +398,7 @@ class Round:
         wrc2_stages = self.stages[len(self.stages)//2:]
         wrc1_stages.append(self.multiclass_overall[0])
         wrc2_stages.append(self.multiclass_overall[1])
-        
+
         for idx, stage in enumerate(wrc1_stages):
             merged_stage = [x for x in chain.from_iterable(zip_longest(stage.result, wrc2_stages[idx].result, fillvalue=None))]
             merged_stage = list(filter(None, merged_stage))
@@ -397,9 +406,9 @@ class Round:
 
             for idy, row in enumerate(merged_stage):
                 row["position"] = str(idy+1)
-        
+
             temp_stages[stage.number] = merged_stage
-        
+
         self.overall = Stage(self.number, temp_stages.pop(self.number), None)
         self.stages = []
 
@@ -414,7 +423,7 @@ def main():
         for folder in club_folders[category]:
             folder = folder if category == "Input" else f'{category}/{folder}'
             Path(folder).mkdir(parents=True, exist_ok=True)
-    
+
     while True: # Asks for a valid club. Will be used as the first level of the glob path
         club = input("Enter the name of the club (WRC / WREC): ").upper()
         if club not in valid_clubs:
@@ -422,7 +431,7 @@ def main():
                 quit(no_export_string)
         else:
             break
-    
+
     looking_for_path = True
     while looking_for_path: # Asks for a valid seaons/round. Will be used as the second level of the glob path
         round_number = input("Enter the season and round as 'S# R#': ").upper()
@@ -448,7 +457,7 @@ def main():
         temp = sorted(temp, key= lambda x: re.split(r"[/\\]", x)[-1])
         temp = sorted(temp, key=len)
         round_files[path.split("/")[0]] = temp # Use the first level of the path as the dictionary key
-    
+
     if not any(round_files.values()): # Quit if glob didn't find any files
         quit(f'No files were found. {no_export_string}')
     else:
@@ -485,7 +494,7 @@ def main():
         if len(valid_clubs[club]) > 1:
             alr_round.import_drivers()
             alr_round.import_stages(round_files)
-            alr_round.remove_duplicate_drivers()
+            alr_round.filter_drivers()
             print()
             alr_round.merge_stages()
         else:
@@ -498,11 +507,11 @@ def main():
             alr_round.export_wrc_results()
         else:
             alr_round.export_wrec_results()
-        
+
         dnf_drivers = [driver for driver in alr_round.drivers.values() if driver.did_not_retire]
         for driver in dnf_drivers:
             print(f'-- {driver.name} failed to retire properly!')
-        
+
         print("\nResults have been successfully exported!")
     else:
         print(no_export_string)
