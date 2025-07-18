@@ -385,11 +385,11 @@ class Round:
 
     def apply_points(self):
         for pos, row in enumerate(self.stages[-1].result[:5]):
-            self.drivers[row["name"]].power_stage_points = power_stage_points[pos] if row["status"] == "" else 0
+            self.drivers[row["name"]].power_stage_points = power_stage_points[pos] if pos < len(power_stage_points) and row["status"] == "" else 0
 
         for pos, row in enumerate(self.overall.result):
             driver = self.drivers[row["name"]]
-            driver.points = points[pos] if row["status"] == "" else 0
+            driver.points = points[pos] if pos < len(points) and row["status"] == "" else 0
             driver.total_points = driver.points + driver.power_stage_points if row["status"] == "" else 0
 
     def merge_stages(self):
