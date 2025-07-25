@@ -214,7 +214,7 @@ class Round:
             with open(file, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
                 if file.split("/")[1] == "WRC":
-                    writer.writerow(["", "Position", "Name", "Class", "Tier", "Car", "Time", "Diff", "Points", "PS Points", "Total Points"])
+                    writer.writerow(["Position", "Name", "Car", "Time", "Diff", "Points", "PS Points", "Total Points"])
                     for idx, row in enumerate(self.overall.result):
                         driver = self.drivers[row["name"]]
                         writer.writerow([
