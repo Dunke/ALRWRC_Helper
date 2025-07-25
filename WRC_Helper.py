@@ -268,9 +268,9 @@ class Round:
                 if idx >= len(self.stages)-1 and len(driver.completed_stages) < self.get_round_cutoff():
                     driver.did_not_finish = True
 
-                if str(row["time"]).split(".")[0] in nominal_times or (driver.did_not_finish and self.club != "WREC"): # Exclude WREC to not tank peoples ELO
+                if str(row["time"]) in nominal_times or (driver.did_not_finish and self.club != "WREC"): # Exclude WREC to not tank peoples ELO
                     row["status"] = "DNF"
-                    if str(row["time"]).split(".")[0] in nominal_times and current_nominal_time is None:
+                    if str(row["time"]) in nominal_times and current_nominal_time is None:
                         current_nominal_time = row["time"]
                         current_nominal_delta = row["delta"]
                 else:
@@ -304,7 +304,7 @@ class Round:
 
                 row["delta"] = get_gap_to_leader(stage.fastest_time, row["time"]) if self.club != "WREC" else row["delta"]
 
-                if str(row["time"]).split(".")[0] not in nominal_times:
+                if str(row["time"]) not in nominal_times:
                     stage_times.append(row["time"])
 
                 current_stage_drivers.append(row["name"])
