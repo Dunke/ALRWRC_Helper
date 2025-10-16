@@ -17,12 +17,11 @@ no_export_string = "\nNo results have been exported!"
 initial_time = timedelta()
 
 class Driver:
-    def __init__(self, name, car, club, tier):
+    def __init__(self, name, car, club):
         self.name = name
         self.car = car
         self.platform = None
         self.club = club
-        self.tier = tier
         self.completed_stages = []
         self.total_time = initial_time
         self.points = 0
@@ -86,13 +85,13 @@ class Round:
                 with open(file, newline='') as f:
                     for row in list(csv.reader(f)):
                         #EXAMPLE ROW:
-                        #["Slokksi", "WRC1", "Master", "Volkswagen Polo 2017", "Round 9 - Croatia, Round 10 - Chile"]
+                        #["Slokksi", "WRC1", "Volkswagen Polo 2017", "Round 9 - Croatia, Round 10 - Chile"]
                         if row[0] not in self.drivers:
-                            drop_rounds = [x.split(" ")[1] for x in row[4].split(", ")]
+                            drop_rounds = [x.split(" ")[1] for x in row[3].split(", ")]
                             if self.number[-1] in drop_rounds:
-                                self.drivers[row[0]] = Driver(row[0], row[3], None, row[2])
+                                self.drivers[row[0]] = Driver(row[0], row[2], None)
                             else:
-                                self.drivers[row[0]] = Driver(row[0], row[3], row[1], row[2])
+                                self.drivers[row[0]] = Driver(row[0], row[2], row[1])
                 break
             else:
                 if not challenge_yes_or_no(f'The file {file} does not exist. Make sure the list of drivers is in the correct location. Try again?'):
@@ -143,9 +142,9 @@ class Round:
 
                         if new_row["name"] not in self.drivers:
                             if self.club == "WREC":
-                                self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["club"], None)
+                                self.drivers[new_row["name"]] = Driver(new_row["name"], new_row["car"], new_row["club"])
                             else:
-                                self.drivers[new_row["name"]] = Driver(new_row["name"], None, None, None)
+                                self.drivers[new_row["name"]] = Driver(new_row["name"], None, None)
 
                         if idx < 2:
                             if self.drivers[new_row["name"]].club != new_row["club"]:
@@ -214,7 +213,6 @@ class Round:
             with open(file, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
                 if file.split("/")[1] == "WRC":
-                    writer.writerow(["Position", "Name", "Car", "Time", "Diff", "Points", "PS Points", "Total Points"])
                     for idx, row in enumerate(self.overall.result):
                         driver = self.drivers[row["name"]]
                         writer.writerow([
