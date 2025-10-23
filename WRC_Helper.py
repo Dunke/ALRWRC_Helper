@@ -216,11 +216,11 @@ class Round:
                     for idx, row in enumerate(self.overall.result):
                         driver = self.drivers[row["name"]]
                         writer.writerow([
-                            idx+1 if row["status"] == "" else row["status"],
+                            idx+1,
                             row["name"],
                             row["car"],
-                            row["time"],
-                            row["delta"],
+                            row["time"] if row["status"] == "" else row["status"],
+                            row["delta"] if row["status"] == "" else "",
                             driver.points,
                             driver.power_stage_points,
                             driver.total_points])
