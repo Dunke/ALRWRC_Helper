@@ -222,7 +222,7 @@ class Round:
                             row["time"] if row["status"] == "" else row["status"],
                             row["delta"] if row["status"] == "" else "",
                             driver.points,
-                            driver.power_stage_points,
+                            driver.power_stage_points if driver.power_stage_points > 0 else "-",
                             driver.total_points])
                 else:
                     for stage in self.stages:
